@@ -1,0 +1,9 @@
+
+=== Freshdesk to JIRA Migration Report ===
+
+Total Tickets: 3
+Successful Migrations: 3
+Failed Migrations: 0
+Success Rate: 100.0%
+
+=== Successfully Migrated Tickets ===

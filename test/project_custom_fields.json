@@ -1,0 +1,65 @@
+[
+  {
+    "id": "customfield_10008",
+    "name": "Actual start",
+    "required": false,
+    "type": "datetime",
+    "allowedValues": []
+  },
+  {
+    "id": "customfield_10009",
+    "name": "Actual end",
+    "required": false,
+    "type": "datetime",
+    "allowedValues": []
+  },
+  {
+    "id": "customfield_10289",
+    "name": "FD_Priority",
+    "required": false,
+    "type": "string",
+    "allowedValues": []
+  },
+  {
+    "id": "customfield_10290",
+    "name": "FD_Created_At",
+    "required": false,
+    "type": "string",
+    "allowedValues": []
+  },
+  {
+    "id": "customfield_10291",
+    "name": "FD_Updated_At",
+    "required": false,
+    "type": "string",
+    "allowedValues": []
+  },
+  {
+    "id": "customfield_10292",
+    "name": "FD_Reporter",
+    "required": false,
+    "type": "string",
+    "allowedValues": []
+  },
+  {
+    "id": "customfield_10293",
+    "name": "FD_Assignee",
+    "required": false,
+    "type": "string",
+    "allowedValues": []
+  },
+  {
+    "id": "customfield_10294",
+    "name": "FD_Status",
+    "required": false,
+    "type": "string",
+    "allowedValues": []
+  },
+  {
+    "id": "customfield_10295",
+    "name": "FD_IssueType",
+    "required": false,
+    "type": "string",
+    "allowedValues": []
+  }
+]

@@ -1,0 +1,11 @@
+# JIRA Configuration
+JIRA_API_TOKEN=ATATT3xFfGF0K6SGWp5JudnlqX5fe1y_oRHloLPF7dzU-HyEXfq7d54se0ayt7OB7uPsQhTT93nvMd0avRSoxElpl0ilGioyLPaQNCb5G-hRgsDHdnzPd10_5t4M5zYamvwm066WMwkhXWtlC1XaNTWs2ONqeJjsGzlQnEH_xSZ7ZYGoeiHKGMI=21057D56
+JIRA_PROJECT_KEY=FTJM
+JIRA_DOMAIN=paytm-test.atlassian.net
+JIRA_EMAIL=your-email@paytm.com
+
+# Migration Configuration
+DRY_RUN=true
+BATCH_SIZE=10
+MAX_RETRIES=3
+RETRY_DELAY=5

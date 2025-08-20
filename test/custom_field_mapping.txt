@@ -1,0 +1,108 @@
+JIRA Custom Fields Mapping
+==================================================
+
+Format: customfield_XXXXX | Field Name | Type
+--------------------------------------------------
+customfield_10000 | Development | any
+customfield_10001 | Team | team
+customfield_10002 | Organizations | array
+customfield_10003 | Approvers | array
+customfield_10004 | Impact | option
+customfield_10005 | Change type | option
+customfield_10006 | Change risk | option
+customfield_10007 | Change reason | option
+customfield_10008 | Actual start | datetime
+customfield_10009 | Actual end | datetime
+customfield_10010 | Request Type | sd-customerrequesttype
+customfield_10011 | Epic Name | string
+customfield_10012 | Epic Status | option
+customfield_10013 | Epic Color | string
+customfield_10014 | Epic Link | any
+customfield_10015 | Start date | date
+customfield_10016 | Story point estimate | number
+customfield_10017 | Issue color | string
+customfield_10018 | Parent Link | any
+customfield_10019 | Rank | any
+customfield_10020 | Sprint | array
+customfield_10021 | Flagged | array
+customfield_10022 | Target start | date
+customfield_10023 | Target end | date
+customfield_10024 | Sentiment | array
+customfield_10025 | [CHART] Date of First Response | datetime
+customfield_10026 | [CHART] Time in Status | any
+customfield_10027 | Goals | array
+customfield_10028 | Submitted forms | number
+customfield_10029 | Open forms | number
+customfield_10030 | Locked forms | number
+customfield_10031 | Total forms | number
+customfield_10033 | Vulnerability | any
+customfield_10034 | Design | array
+customfield_10035 | Project overview key | string
+customfield_10036 | Project overview status | string
+customfield_10037 | Work category | string
+customfield_10038 | Approvals | sd-approvals
+customfield_10039 | Request participants | array
+customfield_10040 | Satisfaction | sd-feedback
+customfield_10041 | Satisfaction date | datetime
+customfield_10042 | Request language | sd-request-lang
+customfield_10043 | Urgency | option
+customfield_10044 | Affected services | array
+customfield_10045 | Pending reason | option
+customfield_10046 | Approver groups | array
+customfield_10047 | Major incident | string
+customfield_10048 | Responders | array
+customfield_10049 | Severity | option
+customfield_10050 | Affected hardware | string
+customfield_10051 | Time to resolution | sd-servicelevelagreement
+customfield_10052 | Time to first response | sd-servicelevelagreement
+customfield_10053 | Time to close after resolution | sd-servicelevelagreement
+customfield_10054 | Story Points | number
+customfield_10058 | Planned start | datetime
+customfield_10059 | Planned end | datetime
+customfield_10060 | Implementation plan | string
+customfield_10061 | Backout plan | string
+customfield_10062 | Test plan | string
+customfield_10063 | Source | option
+customfield_10064 | Investigation reason | option
+customfield_10065 | Root cause | string
+customfield_10066 | Workaround | string
+customfield_10067 | Time to review normal change | sd-servicelevelagreement
+customfield_10091 | Focus Areas | array
+customfield_10126 | Idea archived | option
+customfield_10127 | Idea archived by | array
+customfield_10128 | Idea archived on | datetime
+customfield_10129 | Atlassian project | string
+customfield_10130 | Atlassian project status | string
+customfield_10131 | Insights | number
+customfield_10132 | Comments | number
+customfield_10133 | Linked items | number
+customfield_10134 | Delivery progress | string
+customfield_10135 | Delivery status | string
+customfield_10158 | Business Objective | string
+customfield_10159 | Category | option
+customfield_10160 | Key Communication (for TG) | string
+customfield_10161 | Requirement Type | option
+customfield_10162 | Reference Document Link | string
+customfield_10163 | Language/Vernacular | string
+customfield_10164 | Creative Type | array
+customfield_10165 | Count of Creatives | number
+customfield_10166 | Target Group  | string
+customfield_10167 | Call to Action  | string
+customfield_10190 | Landing Page Link | option
+customfield_10223 | This above brief is Read & Approved by | array
+customfield_10224 | For Video Request  | array
+customfield_10225 | Promo Code  | array
+customfield_10226 | Date of going live  | date
+customfield_10227 | Landing Page link here | string
+customfield_10256 | Link: Content Flow  | string
+customfield_10257 | Link: Creatives/App screen | string
+customfield_10258 | Character Animation & Voice Over(V.O.) Requirement | string
+customfield_10259 | Promo Code here | string
+customfield_10289 | FD_Priority | string
+customfield_10290 | FD_Created_At | string
+customfield_10291 | FD_Updated_At | string
+customfield_10292 | FD_Reporter | string
+customfield_10293 | FD_Assignee | string
+customfield_10294 | FD_Status | string
+customfield_10295 | FD_IssueType | string
+customfield_10296 | Time to done | sd-servicelevelagreement
