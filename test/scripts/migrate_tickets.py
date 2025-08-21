@@ -18,6 +18,7 @@ from utils.data_loader import DataLoader
 from utils.user_mapper import UserMapper
 from utils.ticket_converter import TicketConverter
 from utils.attachment_handler import AttachmentHandler
+from utils.bulk_attachment_handler import BulkAttachmentHandler
 
 try:
     from jira import JIRA
@@ -44,6 +45,7 @@ class TicketMigrator:
         self.user_mapper = UserMapper(self.users_data)
         self.ticket_converter = TicketConverter(self.user_mapper)
         self.attachment_handler = AttachmentHandler(self.jira)
+        self.bulk_attachment_handler = BulkAttachmentHandler()
         
         # Migration tracking
         self.migrated_tickets = []
@@ -83,20 +85,38 @@ class TicketMigrator:
             issue_key = issue.key
             print(f"Created issue: {issue_key}")
             
-            # Upload attachments
+            # Upload attachments using bulk upload
             if ticket_attachments:
-                print(f"Uploading {len(ticket_attachments)} ticket attachments...")
-                uploaded = self.attachment_handler.process_ticket_attachments(
-                    issue_key, ticket_id, ticket_attachments
-                )
-                print(f"Uploaded {uploaded} ticket attachments")
+                print(f"Uploading {len(ticket_attachments)} ticket attachments using bulk upload...")
+                file_paths = []
+                for attachment in ticket_attachments:
+                    filename = attachment.get('name', '')
+                    file_path = f"../data_to_be_migrated/attachments/{ticket_id}/{filename}"
+                    if os.path.exists(file_path):
+                        file_paths.append(file_path)
+                
+                if file_paths:
+                    results = self.bulk_attachment_handler.upload_attachments_bulk(issue_key, file_paths)
+                    uploaded = sum(results)
+                    print(f"✅ Bulk uploaded {uploaded}/{len(file_paths)} ticket attachments")
+                else:
+                    print("⚠️  No valid ticket attachment files found")
             
             if conv_attachments:
-                print(f"Uploading {len(conv_attachments)} conversation attachments...")
-                uploaded = self.attachment_handler.process_conversation_attachments(
-                    issue_key, ticket_id, conv_attachments
-                )
-                print(f"Uploaded {uploaded} conversation attachments")
+                print(f"Uploading {len(conv_attachments)} conversation attachments using bulk upload...")
+                file_paths = []
+                for attachment in conv_attachments:
+                    filename = attachment.get('name', '')
+                    file_path = f"../data_to_be_migrated/attachments/{ticket_id}/{filename}"
+                    if os.path.exists(file_path):
+                        file_paths.append(file_path)
+                
+                if file_paths:
+                    results = self.bulk_attachment_handler.upload_attachments_bulk(issue_key, file_paths)
+                    uploaded = sum(results)
+                    print(f"✅ Bulk uploaded {uploaded}/{len(file_paths)} conversation attachments")
+                else:
+                    print("⚠️  No valid conversation attachment files found")
             
             # Track successful migration
             self.migrated_tickets.append({
