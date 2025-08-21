@@ -95,3 +95,28 @@ class UserMapper:
                 }
         
         return None
+    
+    def get_user_by_id(self, user_id: int) -> Optional[Dict[str, str]]:
+        """Get user information by ID - search in both agents and contacts"""
+        if user_id:
+            # Check if it's an agent
+            if user_id in self.agents_by_id:
+                agent = self.agents_by_id[user_id]
+                contact = agent.get('contact', {})
+                return {
+                    'name': contact.get('name', 'Unknown'),
+                    'email': contact.get('email', ''),
+                    'id': agent['id'],
+                    'type': 'agent'
+                }
+            # Check if it's a contact
+            elif user_id in self.contacts_by_id:
+                contact = self.contacts_by_id[user_id]
+                return {
+                    'name': contact.get('name', 'Unknown'),
+                    'email': contact.get('email', ''),
+                    'id': contact['id'],
+                    'type': 'contact'
+                }
+        
+        return None

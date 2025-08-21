@@ -65,7 +65,12 @@ class TicketMigrator:
             conv_attachments = self.data_loader.load_conversation_attachments(ticket_id).get(ticket_id, [])
             
             # Convert to JIRA format
-            jira_issue = self.ticket_converter.convert_to_jira_issue(ticket, conversations)
+            jira_issue = self.ticket_converter.convert_to_jira_issue(
+                ticket, 
+                conversations, 
+                ticket_attachments, 
+                conv_attachments
+            )
             
             if self.config.dry_run:
                 print("DRY RUN - Would create issue:")

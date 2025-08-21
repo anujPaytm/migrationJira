@@ -28,15 +28,22 @@ class AttachmentHandler:
             print(f"Failed to download attachment {filename}: {e}")
             return None
     
-    def upload_attachment_to_jira(self, issue_key: str, file_path: str) -> bool:
+    def upload_attachment_to_jira(self, issue_key: str, file_path: str, attachment_id: str = None) -> bool:
         """Upload attachment to JIRA issue"""
         try:
             if not os.path.exists(file_path):
                 print(f"File not found: {file_path}")
                 return False
             
+            # Rename file with attachment ID if provided
+            original_filename = os.path.basename(file_path)
+            if attachment_id:
+                filename = f"{attachment_id}_{original_filename}"
+            else:
+                filename = original_filename
+            
             with open(file_path, 'rb') as f:
-                self.jira.add_attachment(issue_key, f, filename=os.path.basename(file_path))
+                self.jira.add_attachment(issue_key, f, filename=filename)
             
             return True
         except Exception as e:
@@ -57,6 +64,7 @@ class AttachmentHandler:
         for attachment in attachments:
             filename = attachment.get('name', '')
             url = attachment.get('url', '')
+            attachment_id = str(attachment.get('id', ''))
             
             if not filename or not url:
                 continue
@@ -64,17 +72,17 @@ class AttachmentHandler:
             # Try local file first
             local_path = self.get_local_attachment_path(ticket_id, filename)
             if local_path:
-                if self.upload_attachment_to_jira(issue_key, local_path):
+                if self.upload_attachment_to_jira(issue_key, local_path, attachment_id):
                     uploaded_count += 1
-                    print(f"Uploaded local attachment: {filename}")
+                    print(f"Uploaded local attachment: {attachment_id}_{filename}")
                 continue
             
             # Download from URL if local file not found
             downloaded_path = self.download_attachment(url, filename)
             if downloaded_path:
-                if self.upload_attachment_to_jira(issue_key, downloaded_path):
+                if self.upload_attachment_to_jira(issue_key, downloaded_path, attachment_id):
                     uploaded_count += 1
-                    print(f"Uploaded downloaded attachment: {filename}")
+                    print(f"Uploaded downloaded attachment: {attachment_id}_{filename}")
                 
                 # Clean up downloaded file
                 try:

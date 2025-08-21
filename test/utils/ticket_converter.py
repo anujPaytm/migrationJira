@@ -45,88 +45,213 @@ class TicketConverter:
         soup = BeautifulSoup(html_content, 'html.parser')
         return soup.get_text(separator='\n', strip=True)
     
-    def format_metadata(self, ticket: Dict[str, Any]) -> str:
-        """Format ticket metadata in metabase style"""
+    def format_ticket_metadata(self, ticket: Dict[str, Any]) -> str:
+        """Format ALL ticket details metadata in metabase style"""
         metadata_lines = [
-            "— Freshdesk Metadata —",
+            "**— Freshdesk Ticket Metadata —**",
             f"id: {ticket.get('id', 'N/A')}",
-            f"created_at: {ticket.get('created_at', 'N/A')}",
-            f"updated_at: {ticket.get('updated_at', 'N/A')}",
+            f"subject: {ticket.get('subject', 'N/A')}",
+            f"description_text: {ticket.get('description_text', 'N/A')}",
+            f"priority: {self.priority_map.get(ticket.get('priority'), 'Unknown')}",
+            f"status: {self.status_map.get(ticket.get('status'), 'Unknown')}",
+            f"type: {ticket.get('type', 'N/A')}",
             f"source: {self.source_map.get(ticket.get('source'), 'Unknown')}",
-            f"product_id: {ticket.get('product_id', 'N/A')}",
-            f"fr_due_by: {ticket.get('fr_due_by', 'N/A')}",
-            f"fr_escalated: {ticket.get('fr_escalated', False)}",
-            f"is_escalated: {ticket.get('is_escalated', False)}",
-            f"spam: {ticket.get('spam', False)}",
-            f"email_config_id: {ticket.get('email_config_id', 'N/A')}",
-            f"priority: {ticket.get('priority', 'N/A')}",
-            f"status: {ticket.get('status', 'N/A')}",
+            f"source_additional_info: {ticket.get('source_additional_info', 'N/A')}",
+            f"cc_emails: {', '.join(ticket.get('cc_emails', []))}",
+            f"fwd_emails: {', '.join(ticket.get('fwd_emails', []))}",
+            f"reply_cc_emails: {', '.join(ticket.get('reply_cc_emails', []))}",
+            f"ticket_cc_emails: {', '.join(ticket.get('ticket_cc_emails', []))}",
+            f"ticket_bcc_emails: {', '.join(ticket.get('ticket_bcc_emails', []))}",
+            f"to_emails: {', '.join(ticket.get('to_emails', []))}",
+            f"support_email: {ticket.get('support_email', 'N/A')}",
+            f"requester_id: {ticket.get('requester_id', 'N/A')}",
+            f"responder_id: {ticket.get('responder_id', 'N/A')}",
             f"group_id: {ticket.get('group_id', 'N/A')}",
             f"company_id: {ticket.get('company_id', 'N/A')}",
-            f"type: {ticket.get('type', 'N/A')}",
+            f"created_at: {ticket.get('created_at', 'N/A')}",
+            f"updated_at: {ticket.get('updated_at', 'N/A')}",
             f"due_by: {ticket.get('due_by', 'N/A')}",
+            f"fr_due_by: {ticket.get('fr_due_by', 'N/A')}",
+            f"is_escalated: {ticket.get('is_escalated', False)}",
+            f"fr_escalated: {ticket.get('fr_escalated', False)}",
+            f"spam: {ticket.get('spam', False)}",
+            f"email_config_id: {ticket.get('email_config_id', 'N/A')}",
+            f"product_id: {ticket.get('product_id', 'N/A')}",
+            f"association_type: {ticket.get('association_type', 'N/A')}",
+            f"tags: {', '.join(ticket.get('tags', []))}",
+            f"sentiment_score: {ticket.get('sentiment_score', 'N/A')}",
+            f"initial_sentiment_score: {ticket.get('initial_sentiment_score', 'N/A')}",
+            f"structured_description: {ticket.get('structured_description', 'N/A')}",
             f"nr_due_by: {ticket.get('nr_due_by', 'N/A')}",
             f"nr_escalated: {ticket.get('nr_escalated', False)}",
-            f"sentiment_score: {ticket.get('sentiment_score', 'N/A')}",
-            f"initial_sentiment_score: {ticket.get('initial_sentiment_score', 'N/A')}"
+            f"ticket_id: {ticket.get('ticket_id', 'N/A')}"
         ]
         
-        # Add custom fields
+        # Add custom fields if any
         custom_fields = ticket.get('custom_fields', {})
         for key, value in custom_fields.items():
             metadata_lines.append(f"{key}: {value}")
         
-        # Add tags
-        tags = ticket.get('tags', [])
-        if tags:
-            metadata_lines.append(f"tags: {', '.join(tags)}")
-        
         return '\n'.join(metadata_lines)
     
-    def format_comments(self, conversations: List[Dict[str, Any]]) -> str:
-        """Format conversations as comments"""
+    def format_conversations(self, conversations: List[Dict[str, Any]]) -> str:
+        """Format conversations with detailed information"""
         if not conversations:
             return ""
         
-        comments_lines = ["— Comments —"]
+        # Define headers once
+        headers = ["conversation_id", "created_at", "updated_at", "user_id", "private", "to_email", "from_email", "cc_email", "bcc_email"]
+        
+        conversations_lines = ["**— Conversations —**", ':'.join(headers)]
         
         for conv in conversations:
-            author = self.user_mapper.get_conversation_author(conv)
-            author_name = author.get('name', 'Unknown') if author else 'Unknown'
-            author_email = author.get('email', '') if author else ''
+            # Get user information
+            user_info = self.user_mapper.get_conversation_author(conv)
+            user_email = user_info.get('email', 'NA') if user_info else 'NA'
             
-            created_at = conv.get('created_at', '')
-            if created_at:
-                try:
-                    dt = parser.parse(created_at)
-                    created_at = dt.strftime('%Y-%m-%d %H:%M:%S')
-                except:
-                    pass
+            # Format dates
+            created_at = conv.get('created_at', 'N/A')
+            updated_at = conv.get('updated_at', 'N/A')
             
-            # Clean the comment body
-            body = conv.get('body_text', '') or self.clean_html(conv.get('body', ''))
+            # Format privacy status
+            is_private = conv.get('private', False)
+            privacy_status = "private" if is_private else "public"
             
-            comments_lines.extend([
-                f"\n**{author_name}** ({author_email}) - {created_at}",
-                f"{body}",
-                "---"
+            # Get email fields
+            to_emails = ', '.join(conv.get('to_emails', []))
+            from_email = conv.get('from_email', 'N/A')
+            cc_emails = ', '.join(conv.get('cc_emails', []))
+            bcc_emails = ', '.join(conv.get('bcc_emails', []))
+            
+            # Get values
+            values = [
+                str(conv.get('id', 'N/A')),
+                str(created_at),
+                str(updated_at),
+                str(user_email),
+                str(privacy_status),
+                str(to_emails),
+                str(from_email),
+                str(cc_emails),
+                str(bcc_emails)
+            ]
+            
+            # Clean the body text
+            body_text = conv.get('body_text', '') or self.clean_html(conv.get('body', ''))
+            
+            conversations_lines.extend([
+                ':'.join(values),
+                body_text,
+                "---",
+                ""  # Add extra blank line for better readability
             ])
         
-        return '\n'.join(comments_lines)
+        return '\n'.join(conversations_lines)
     
-    def convert_to_jira_issue(self, ticket: Dict[str, Any], conversations: List[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def format_attachment_details(self, ticket_attachments: List[Dict[str, Any]], conversation_attachments: List[Dict[str, Any]]) -> str:
+        """Format attachment details"""
+        if not ticket_attachments and not conversation_attachments:
+            return ""
+        
+        # Define headers once
+        headers = ["created_at", "updated_at", "newNamed file name", "size", "user_id", "conversation_id"]
+        
+        attachment_lines = ["**— Attachment Details —**", ':'.join(headers)]
+        
+        # Process ticket attachments
+        for attachment in ticket_attachments:
+            # Get user information
+            user_info = self.user_mapper.get_user_by_id(attachment.get('user_id'))
+            user_email = user_info.get('email', 'NA') if user_info else 'NA'
+            
+            # Format attachment info
+            attachment_id = attachment.get('id', 'N/A')
+            original_name = attachment.get('name', 'N/A')
+            new_name = f"{attachment_id}_{original_name}"
+            
+            # Get values
+            values = [
+                str(attachment.get('created_at', 'N/A')),
+                'NA',  # updated_at is NA for ticket attachments
+                str(new_name),
+                str(attachment.get('size', 'N/A')),
+                str(user_email),
+                'NA'  # conversation_id is NA for ticket attachments
+            ]
+            
+            attachment_lines.append(':'.join(values))
+        
+        # Process conversation attachments
+        for attachment in conversation_attachments:
+            # Get user information
+            user_info = self.user_mapper.get_user_by_id(attachment.get('user_id'))
+            user_email = user_info.get('email', 'NA') if user_info else 'NA'
+            
+            # Format attachment info
+            attachment_id = attachment.get('id', 'N/A')
+            original_name = attachment.get('name', 'N/A')
+            new_name = f"{attachment_id}_{original_name}"
+            
+            # Get values
+            values = [
+                str(attachment.get('created_at', 'N/A')),
+                str(attachment.get('updated_at', 'N/A')),
+                str(new_name),
+                str(attachment.get('size', 'N/A')),
+                str(user_email),
+                str(attachment.get('conversation_id', 'N/A'))
+            ]
+            
+            attachment_lines.append(':'.join(values))
+        
+        return '\n'.join(attachment_lines)
+    
+    def convert_to_jira_issue(self, ticket: Dict[str, Any], conversations: List[Dict[str, Any]] = None, 
+                             ticket_attachments: List[Dict[str, Any]] = None, 
+                             conversation_attachments: List[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Convert Freshdesk ticket to JIRA issue format"""
         
         # Get user information
         requester = self.user_mapper.get_requester_info(ticket.get('requester_id'))
         responder = self.user_mapper.get_responder_info(ticket.get('responder_id'))
         
-        # Format description
-        metadata = self.format_metadata(ticket)
-        description = self.clean_html(ticket.get('description', ''))
-        comments = self.format_comments(conversations or [])
+        # Format all sections
+        ticket_metadata = self.format_ticket_metadata(ticket)
+        conversations_section = self.format_conversations(conversations or [])
+        attachment_details = self.format_attachment_details(ticket_attachments or [], conversation_attachments or [])
         
-        full_description = f"{metadata}\n\n— Description —\n{description}\n\n{comments}"
+        # Combine all sections with proper spacing
+        sections = []
+        if ticket_metadata:
+            sections.append(ticket_metadata)
+        if conversations_section:
+            sections.append(conversations_section)
+        if attachment_details:
+            sections.append(attachment_details)
+        
+        full_description = '\n\n\n'.join(sections)  # Triple line spacing between sections
+        
+        # Truncate description if it exceeds JIRA's 32,767 character limit
+        max_description_length = 32000  # Leave some buffer
+        if len(full_description) > max_description_length:
+            print(f"Warning: Description too long ({len(full_description)} chars), truncating to {max_description_length} chars")
+            
+            # Keep ticket metadata and truncate conversations
+            truncated_description = ticket_metadata + "\n\n"
+            remaining_length = max_description_length - len(truncated_description) - 100  # Leave space for truncation notice
+            
+            # Add truncated conversations
+            if conversations_section:
+                truncated_conversations = conversations_section[:remaining_length]
+                if len(conversations_section) > remaining_length:
+                    truncated_conversations += "\n\n[TRUNCATED - Description too long for JIRA]"
+                truncated_description += truncated_conversations
+            
+            # Add attachment details if space allows
+            if attachment_details and len(truncated_description) + len(attachment_details) < max_description_length:
+                truncated_description += "\n\n" + attachment_details
+            
+            full_description = truncated_description
         
         # Parse dates
         due_date = None
@@ -162,45 +287,20 @@ class TicketConverter:
             jira_issue["fields"]["duedate"] = due_date
         
         # Add Freshdesk custom fields
-        jira_issue["fields"]["customfield_10289"] = str(ticket.get('priority', ''))  # FD_Priority
+        jira_issue["fields"]["customfield_10289"] = self.priority_map.get(ticket.get('priority', 1), "Low")  # FD_Priority
         jira_issue["fields"]["customfield_10290"] = ticket.get('created_at', '')  # FD_Created_At
         jira_issue["fields"]["customfield_10291"] = ticket.get('updated_at', '')  # FD_Updated_At
-        jira_issue["fields"]["customfield_10294"] = str(ticket.get('status', ''))  # FD_Status
+        jira_issue["fields"]["customfield_10294"] = self.status_map.get(ticket.get('status', 2), "Open")  # FD_Status
         jira_issue["fields"]["customfield_10295"] = ticket.get('type', '') or 'Task'  # FD_IssueType
         
-        # Add Freshdesk user information
+        # Add Freshdesk user information - ONLY EMAIL ADDRESSES
         if requester:
-            jira_issue["fields"]["customfield_10292"] = f"{requester.get('name', '')} ({requester.get('email', '')})"  # FD_Reporter
+            jira_issue["fields"]["customfield_10292"] = requester.get('email', '')  # FD_Reporter
         
         if responder:
-            jira_issue["fields"]["customfield_10293"] = f"{responder.get('name', '')} ({responder.get('email', '')})"  # FD_Assignee
+            jira_issue["fields"]["customfield_10293"] = responder.get('email', '')  # FD_Assignee
         else:
-            jira_issue["fields"]["customfield_10293"] = "Unassigned"  # FD_Assignee
-        
-        # Add email fields and other Freshdesk data
-        # Note: These would need custom field IDs to be created in JIRA first
-        # For now, we'll add them to the description metadata
-        email_fields = []
-        if ticket.get('to_emails'):
-            email_fields.append(f"To: {', '.join(ticket['to_emails'])}")
-        if ticket.get('cc_emails'):
-            email_fields.append(f"CC: {', '.join(ticket['cc_emails'])}")
-        if ticket.get('fwd_emails'):
-            email_fields.append(f"Forward: {', '.join(ticket['fwd_emails'])}")
-        if ticket.get('reply_cc_emails'):
-            email_fields.append(f"Reply CC: {', '.join(ticket['reply_cc_emails'])}")
-        if ticket.get('ticket_cc_emails'):
-            email_fields.append(f"Ticket CC: {', '.join(ticket['ticket_cc_emails'])}")
-        if ticket.get('ticket_bcc_emails'):
-            email_fields.append(f"Ticket BCC: {', '.join(ticket['ticket_bcc_emails'])}")
-        if ticket.get('support_email'):
-            email_fields.append(f"Support: {ticket['support_email']}")
-        
-        if email_fields:
-            # Add email information to the description
-            email_section = "\n— Email Information —\n" + "\n".join(email_fields)
-            full_description = full_description.replace("— Description —", f"{email_section}\n\n— Description —")
-            jira_issue["fields"]["description"] = full_description
+            jira_issue["fields"]["customfield_10293"] = ""  # FD_Assignee
         
         return jira_issue
     

@@ -1,0 +1,97 @@
+— Freshdesk Ticket Metadata —
+id: 55
+subject: Tax Invoice P9-T/2024-24/038 | Process9
+description: <div dir="ltr">
+<div dir="ltr">Hi Team,</div>
+<div dir="ltr"><br></div>
+<div>PFA Tax Invoice P9-T/2024-25/038 dtd. 02-05-2024 of Rs. 2,14,651.17 for translation fee M/o April 2024, supporting files are enclosed for your reference.</div>
+<div><br></div>
+<div>
+<b></b><b>Please share a PO or PR request for the same. so that we can upload the invoice to the procurement portal.</b>
+</div>
+<div><br></div>
+<span class="gmail_signature_prefix">-- </span><br><div dir="ltr" class="gmail_signature"><div dir="ltr"><div dir="ltr"><div dir="ltr"><div dir="ltr">
+<div>Best Regards,</div>
+<div dir="ltr"><table cellpadding="0" cellspacing="0" style="font-size:16px;border-collapse:collapse;font-family:Arial;line-height:1.15;color:rgb(0,0,0)"><tbody><tr>
+<td style="vertical-align:top;padding:0.01px 14px 0.01px 1px;width:120px;text-align:center">
+<br><img src="https://cdn.gifo.wisestamp.com/im/sh/dS9tWUczd1A0cTFxMC8xNjYxNDA2Mjk4NTYxLmpwZWcjbG9nbw==/rounded.png" height="auto" width="120" style="width:120px;vertical-align:middle;border-radius:4px;height:auto">
+</td>
+<td style="padding:0.01px 0.01px 0.01px 14px;vertical-align:top;border-left:1px solid rgb(33,33,33)"><table cellpadding="0" cellspacing="0" style="border-collapse:collapse"><tbody>
+<tr><td style="font-family:Arial;line-height:1.2;padding:0.01px">
+<font color="#646464"><span style="font-size:18px"><b>Naresh Kumar</b></span></font><br><span style="text-transform:initial;font-weight:bold;color:rgb(100,100,100);line-height:1.2;font-size:14px">AVP - Accounts <br></span><span style="text-transform:initial;font-weight:bold;color:rgb(100,100,100);line-height:1.2;font-size:14px">Process Nine Technologies</span>
+</td></tr>
+<tr><td width="309" style="padding-top:14px;white-space:nowrap;width:309px">
+<div style="margin:0.1px;line-height:1"><span style="font-family:Arial;font-size:12px;color:rgb(33,33,33)"><img src="https://cdn.gifo.wisestamp.com/s/rfm1/45668E/26/trans.png" width="13" style="vertical-align:-2px;line-height:1.2;width:13px"> <span style="line-height:1.2">9953037271 </span>  <img src="https://cdn.gifo.wisestamp.com/s/rfw1/45668E/26/trans.png" width="13" style="vertical-align:-2px;line-height:1.2;width:13px"> <a href="http://process9.com/" style="color:rgb(17,85,204);text-decoration:unset" target="_blank" rel="noreferrer"><span style="line-height:1.2;color:rgb(33,33,33)">process9.com </span></a>  <img src="https://cdn.gifo.wisestamp.com/s/rfa2/45668E/26/trans.png" width="13" style="vertical-align:-2px;line-height:1.2;width:13px"> <a href="https://www.google.com/maps/place/Process+Nine+Technologies+Pvt.+Ltd./@28.452706,77.072393,15z/data=!4m2!3m1!1s0x0:0x177e33ee7eb378b6?sa=X&amp;ved=2ahUKEwjQ7r3ZuuH5AhW863MBHR3xDAwQ_BJ6BAhSEB8" style="color:rgb(17,85,204);text-decoration:unset" target="_blank" rel="noreferrer"><span style="line-height:1.2;color:rgb(33,33,33)">Gurugram</span></a></span></div>
+<div><br></div>
+</td></tr>
+</tbody></table></td>
+</tr></tbody></table></div>
+</div></div></div></div></div>
+</div>
+
+
+description_text: Hi Team,
+
+PFA Tax Invoice P9-T/2024-25/038 dtd. 02-05-2024 of Rs. 2,14,651.17 for
+translation fee M/o April 2024, supporting files are enclosed for your
+reference.
+
+*Please share a PO or PR request for the same. so that we can upload the
+invoice to the procurement portal.*
+
+-- 
+Best Regards,
+
+*Naresh Kumar*
+AVP - Accounts
+Process Nine Technologies
+
+ 9953037271    process9.com  <http://process9.com/>   Gurugram
+<https://www.google.com/maps/place/Process+Nine+Technologies+Pvt.+Ltd./@28.452706,77.072393,15z/data=!4m2!3m1!1s0x0:0x177e33ee7eb378b6?sa=X&ved=2ahUKEwjQ7r3ZuuH5AhW863MBHR3xDAwQ_BJ6BAhSEB8>
+
+
+priority: Low
+status: Done
+type: None
+source: Email
+source_additional_info: None
+cc_emails: ankit3.chaudhary@paytm.com, vendorhelpdesk@paytm.com, vaibhav.kumawat@paytm.com, bhavesh.randhir@paytm.com, jai1.kishan@paytmservices.com, vidushi.kapoor@process9.com, naman.gupta@process9.com, vikas.kumar@process9.com
+fwd_emails: 
+reply_cc_emails: ankit3.chaudhary@paytm.com, vendorhelpdesk@paytm.com, vaibhav.kumawat@paytm.com, bhavesh.randhir@paytm.com, jai1.kishan@paytmservices.com, vidushi.kapoor@process9.com, naman.gupta@process9.com, vikas.kumar@process9.com
+ticket_cc_emails: vidushi.kapoor@process9.com, naman.gupta@process9.com, vikas.kumar@process9.com
+ticket_bcc_emails: 
+to_emails: "Ankit Chaudhary" <ankit3.chaudhary@paytm.com>, "vendor Helpdesk" <vendorhelpdesk@paytm.com>, "Vaibhav Kumawat" <vaibhav.kumawat@paytm.com>, "Bhavesh S Randhir" <bhavesh.randhir@paytm.com>, "Jai Kishan" <jai1.kishan@paytmservices.com>
+support_email: paytmcomvendorhelpdesk@vendorhelpdesk.freshdesk.com
+requester_id: 1060014793730
+responder_id: 1060011035553
+group_id: None
+company_id: None
+created_at: 2024-05-02T13:57:28Z
+updated_at: 2024-07-29T17:35:51Z
+due_by: 2024-05-07T13:00:00Z
+fr_due_by: 2024-05-06T13:00:00Z
+is_escalated: False
+fr_escalated: False
+spam: False
+email_config_id: 1060000051131
+product_id: 1060000043624
+association_type: None
+tags: 
+sentiment_score: 64
+initial_sentiment_score: 64
+structured_description: None
+nr_due_by: None
+nr_escalated: False
+ticket_id: 55
+cf_reference_number: None
+cf_remarks: None
+
+— Conversations —
+conversation_id: 1060022332187: created_at: 2024-05-03T05:47:31Z: updated_at: 2024-05-03T05:47:31Z: user_id: neetu.kurichh@paytm.com: private: public: to_email: naresh.kumar@process9.com: from_email: paytm <support@vendorhelpdesk.freshdesk.com>: cc_email: ankit3.chaudhary@paytm.com, vendorhelpdesk@paytm.com, vaibhav.kumawat@paytm.com, bhavesh.randhir@paytm.com, jai1.kishan@paytmservices.com, vidushi.kapoor@process9.com, naman.gupta@process9.com, vikas.kumar@process9.com: bcc_email: 
+​Dear Partner,     Please get in touch with your business spoc.           Regards  Neetu Kurichh  Vendor Helpdesk
+---
+
+— Attachment Details —
+created_at: 2024-05-02T13:57:28Z: updated_at: NA: newNamed file name: 1060010951857_Tax Invoice P9-T-24-25-038 detail One97.pdf: size: 177179: user_id: Unknown: conversation_id: NA
+created_at: 2024-05-02T13:57:28Z: updated_at: NA: newNamed file name: 1060010951858_Tax Invoice P9-T-24-25-038 One97.pdf: size: 163733: user_id: Unknown: conversation_id: NA
+created_at: 2024-05-02T13:57:28Z: updated_at: NA: newNamed file name: 1060010951859_Billing_detail_PayTM_Live_P9-t-24-25-038.xlsx: size: 595914: user_id: Unknown: conversation_id: NA
