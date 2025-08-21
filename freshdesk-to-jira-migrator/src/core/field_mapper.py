@@ -11,7 +11,7 @@ from typing import Dict, Any, List, Optional, Tuple
 # Add the project root to the path for imports
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
-from config.mapper_functions import apply_mapper_function
+from config.mapper_functions import apply_mapper_function, clean_html
 
 
 class FieldMapper:
@@ -73,6 +73,31 @@ class FieldMapper:
         """
         mapping = self.get_field_mapping(field_name, field_category)
         return mapping is not None and mapping.get("jira_field") is not None
+    
+    def is_parent_field_mapped(self, parent_field_name: str) -> bool:
+        """
+        Check if a parent field has a mapping to a JIRA field.
+        
+        Args:
+            parent_field_name: Name of the parent field (ticket_metadata, conversations, attachments)
+            
+        Returns:
+            True if the parent field is mapped, False otherwise
+        """
+        mapping = self.get_field_mapping(parent_field_name, "parent_fields")
+        return mapping is not None and mapping.get("jira_field") is not None
+    
+    def get_parent_field_mapping(self, parent_field_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Get the mapping for a parent field.
+        
+        Args:
+            parent_field_name: Name of the parent field
+            
+        Returns:
+            Mapping dictionary or None if not found
+        """
+        return self.get_field_mapping(parent_field_name, "parent_fields")
     
     def map_field_value(self, field_name: str, field_value: Any, field_category: str = "ticket_fields", context: dict = None) -> Tuple[Optional[str], Optional[Any]]:
         """
@@ -244,3 +269,142 @@ class FieldMapper:
         Reload the field mapping from file.
         """
         self.field_mapping = self._load_field_mapping()
+    
+    def map_hierarchical_fields(self, data: Any, data_type: str, user_data: dict = None) -> Tuple[Dict[str, Any], Any]:
+        """
+        Map fields using hierarchical approach: check parent field first, then individual fields.
+        
+        Args:
+            data: Data to map (ticket_data, conversations, attachments)
+            data_type: Type of data ('ticket_metadata', 'conversations', 'attachments')
+            user_data: User data for context
+            
+        Returns:
+            Tuple of (mapped_fields, unmapped_fields)
+        """
+        mapped_fields = {}
+        unmapped_fields = {}
+        
+        # First check if parent field is mapped
+        if self.is_parent_field_mapped(data_type):
+            # Parent field exists - map all data to parent field
+            parent_mapping = self.get_parent_field_mapping(data_type)
+            jira_field = parent_mapping.get("jira_field")
+            
+            if jira_field:
+                # Format all data as a single field value
+                formatted_data = self._format_data_for_parent_field(data, data_type)
+                mapped_fields[jira_field] = formatted_data
+                return mapped_fields, unmapped_fields
+        else:
+            # Parent field doesn't exist - check individual fields
+            field_category = f"{data_type.replace('_', '')}_fields"
+            
+            # Handle different data types
+            if isinstance(data, dict):
+                for field_name, field_value in data.items():
+                    jira_field, mapped_value = self.map_field_value(field_name, field_value, field_category, user_data)
+                    if jira_field and mapped_value is not None:
+                        mapped_fields[jira_field] = mapped_value
+                    else:
+                        unmapped_fields[field_name] = field_value
+            elif isinstance(data, list):
+                # For lists (like conversations, attachments), return the list as unmapped
+                unmapped_fields = data
+            else:
+                unmapped_fields = data
+        
+        return mapped_fields, unmapped_fields
+    
+    def _format_data_for_parent_field(self, data: Dict[str, Any], data_type: str) -> str:
+        """
+        Format data for storage in a parent field.
+        
+        Args:
+            data: Data to format
+            data_type: Type of data
+            
+        Returns:
+            Formatted string
+        """
+        if data_type == "ticket_metadata":
+            return self._format_ticket_metadata_for_parent(data)
+        elif data_type == "conversations":
+            return self._format_conversations_for_parent(data)
+        elif data_type == "attachments":
+            return self._format_attachments_for_parent(data)
+        else:
+            return json.dumps(data, indent=2)
+    
+    def _format_ticket_metadata_for_parent(self, data: Dict[str, Any]) -> str:
+        """Format ticket metadata for parent field storage."""
+        lines = ["**— Freshdesk Ticket Metadata —**"]
+        
+        for field_name, field_value in data.items():
+            if field_value is not None and field_value != "":
+                if isinstance(field_value, list):
+                    field_value = ', '.join(str(v) for v in field_value)
+                lines.append(f"{field_name}: {field_value}")
+        
+        return '\n'.join(lines)
+    
+    def _format_conversations_for_parent(self, data: List[Dict[str, Any]]) -> str:
+        """Format conversations for parent field storage."""
+        if not data:
+            return ""
+        
+        headers = ["created_at", "updated_at", "conversation_id", "user_id", "private", "to_email", "from_email", "cc_email", "bcc_email"]
+        lines = ["**— Conversations —**", ':'.join(headers)]
+        
+        for conv in data:
+            # Format conversation data (simplified version)
+            values = [
+                str(conv.get('created_at', 'N/A')),
+                str(conv.get('updated_at', 'N/A')),
+                str(conv.get('id', 'N/A')),
+                str(conv.get('user_id', 'N/A')),
+                str(conv.get('private', False)),
+                str(', '.join(conv.get('to_emails', []))),
+                str(conv.get('from_email', 'N/A')),
+                str(', '.join(conv.get('cc_emails', []))),
+                str(', '.join(conv.get('bcc_emails', [])))
+            ]
+            
+            body_text = conv.get('body_text', '') or clean_html(conv.get('body', ''))
+            
+            lines.extend([
+                ':'.join(values),
+                "",
+                body_text,
+                "---",
+                ""
+            ])
+        
+        return '\n'.join(lines)
+    
+    def _format_attachments_for_parent(self, data: List[Dict[str, Any]]) -> str:
+        """Format attachments for parent field storage."""
+        if not data:
+            return ""
+        
+        headers = ["created_at", "updated_at", "attachment_id", "newNamed file name", "size", "user_id", "conversation_id"]
+        lines = ["**— Attachment Details —**", ':'.join(headers)]
+        
+        for attachment in data:
+            attachment_id = attachment.get('id', 'N/A')
+            original_name = attachment.get('name', 'N/A')
+            new_name = f"{attachment_id}_{original_name}"
+            
+            values = [
+                str(attachment.get('created_at', 'N/A')),
+                str(attachment.get('updated_at', 'N/A')),
+                str(attachment_id),
+                str(new_name),
+                str(attachment.get('size', 'N/A')),
+                str(attachment.get('user_id', 'N/A')),
+                str(attachment.get('conversation_id', 'N/A'))
+            ]
+            
+            lines.append(':'.join(values))
+        
+        return '\n'.join(lines)

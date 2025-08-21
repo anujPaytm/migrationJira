@@ -1,4 +1,24 @@
 {
+  "parent_fields": {
+    "ticket_metadata": {
+      "jira_field": null,
+      "field_type": "custom",
+      "mapper_function": null,
+      "description": "All ticket metadata fields"
+    },
+    "conversations": {
+      "jira_field": null,
+      "field_type": "custom", 
+      "mapper_function": null,
+      "description": "All conversation data"
+    },
+    "attachments": {
+      "jira_field": null,
+      "field_type": "custom",
+      "mapper_function": null,
+      "description": "All attachment details"
+    }
+  },
   "ticket_fields": {
     "subject": {
       "jira_field": "summary",
