@@ -51,7 +51,6 @@ class TicketConverter:
             "**— Freshdesk Ticket Metadata —**",
             f"id: {ticket.get('id', 'N/A')}",
             f"subject: {ticket.get('subject', 'N/A')}",
-            f"description_text: {ticket.get('description_text', 'N/A')}",
             f"priority: {self.priority_map.get(ticket.get('priority'), 'Unknown')}",
             f"status: {self.status_map.get(ticket.get('status'), 'Unknown')}",
             f"type: {ticket.get('type', 'N/A')}",
@@ -94,13 +93,20 @@ class TicketConverter:
         
         return '\n'.join(metadata_lines)
     
+    def format_description(self, ticket: Dict[str, Any]) -> str:
+        """Format ticket description separately"""
+        description_text = ticket.get('description_text', 'N/A')
+        if description_text and description_text != 'N/A':
+            return f"**— Description —**\n{description_text}"
+        return ""
+    
     def format_conversations(self, conversations: List[Dict[str, Any]]) -> str:
         """Format conversations with detailed information"""
         if not conversations:
             return ""
         
-        # Define headers once
-        headers = ["conversation_id", "created_at", "updated_at", "user_id", "private", "to_email", "from_email", "cc_email", "bcc_email"]
+        # Define headers once - reordered with time fields first, then id
+        headers = ["created_at", "updated_at", "conversation_id", "user_id", "private", "to_email", "from_email", "cc_email", "bcc_email"]
         
         conversations_lines = ["**— Conversations —**", ':'.join(headers)]
         
@@ -123,11 +129,11 @@ class TicketConverter:
             cc_emails = ', '.join(conv.get('cc_emails', []))
             bcc_emails = ', '.join(conv.get('bcc_emails', []))
             
-            # Get values
+            # Get values - reordered to match headers
             values = [
-                str(conv.get('id', 'N/A')),
                 str(created_at),
                 str(updated_at),
+                str(conv.get('id', 'N/A')),
                 str(user_email),
                 str(privacy_status),
                 str(to_emails),
@@ -141,6 +147,7 @@ class TicketConverter:
             
             conversations_lines.extend([
                 ':'.join(values),
+                "",  # Add blank line before body text
                 body_text,
                 "---",
                 ""  # Add extra blank line for better readability
@@ -153,8 +160,8 @@ class TicketConverter:
         if not ticket_attachments and not conversation_attachments:
             return ""
         
-        # Define headers once
-        headers = ["created_at", "updated_at", "newNamed file name", "size", "user_id", "conversation_id"]
+        # Define headers once - reordered with time fields first, then id
+        headers = ["created_at", "updated_at", "attachment_id", "newNamed file name", "size", "user_id", "conversation_id"]
         
         attachment_lines = ["**— Attachment Details —**", ':'.join(headers)]
         
@@ -169,10 +176,11 @@ class TicketConverter:
             original_name = attachment.get('name', 'N/A')
             new_name = f"{attachment_id}_{original_name}"
             
-            # Get values
+            # Get values - reordered to match headers
             values = [
                 str(attachment.get('created_at', 'N/A')),
                 'NA',  # updated_at is NA for ticket attachments
+                str(attachment_id),
                 str(new_name),
                 str(attachment.get('size', 'N/A')),
                 str(user_email),
@@ -192,10 +200,11 @@ class TicketConverter:
             original_name = attachment.get('name', 'N/A')
             new_name = f"{attachment_id}_{original_name}"
             
-            # Get values
+            # Get values - reordered to match headers
             values = [
                 str(attachment.get('created_at', 'N/A')),
                 str(attachment.get('updated_at', 'N/A')),
+                str(attachment_id),
                 str(new_name),
                 str(attachment.get('size', 'N/A')),
                 str(user_email),
@@ -217,6 +226,7 @@ class TicketConverter:
         
         # Format all sections
         ticket_metadata = self.format_ticket_metadata(ticket)
+        description_section = self.format_description(ticket)
         conversations_section = self.format_conversations(conversations or [])
         attachment_details = self.format_attachment_details(ticket_attachments or [], conversation_attachments or [])
         
@@ -224,6 +234,8 @@ class TicketConverter:
         sections = []
         if ticket_metadata:
             sections.append(ticket_metadata)
+        if description_section:
+            sections.append(description_section)
         if conversations_section:
             sections.append(conversations_section)
         if attachment_details:
