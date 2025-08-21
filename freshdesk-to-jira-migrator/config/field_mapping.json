@@ -1,0 +1,165 @@
+{
+  "ticket_fields": {
+    "subject": {
+      "jira_field": "summary",
+      "field_type": "system",
+      "mapper_function": null
+    },
+    "priority": {
+      "jira_field": "customfield_10289",
+      "field_type": "custom",
+      "mapper_function": "map_priority"
+    },
+    "status": {
+      "jira_field": "customfield_10294",
+      "field_type": "custom",
+      "mapper_function": "map_status"
+    },
+    "type": {
+      "jira_field": "customfield_10295",
+      "field_type": "custom",
+      "mapper_function": null
+    },
+    "created_at": {
+      "jira_field": "customfield_10290",
+      "field_type": "custom",
+      "mapper_function": "format_date"
+    },
+    "updated_at": {
+      "jira_field": "customfield_10291",
+      "field_type": "custom",
+      "mapper_function": "format_date"
+    },
+    "requester_id": {
+      "jira_field": "customfield_10292",
+      "field_type": "custom",
+      "mapper_function": "map_user_from_id"
+    },
+    "responder_id": {
+      "jira_field": "customfield_10293",
+      "field_type": "custom",
+      "mapper_function": "map_user_from_id"
+    }
+  },
+  "conversation_fields": {
+    "id": {
+      "jira_field": null,
+      "field_type": "custom",
+      "mapper_function": null
+    },
+    "body_text": {
+      "jira_field": null,
+      "field_type": "custom",
+      "mapper_function": null
+    },
+    "private": {
+      "jira_field": null,
+      "field_type": "custom",
+      "mapper_function": null
+    },
+    "created_at": {
+      "jira_field": null,
+      "field_type": "custom",
+      "mapper_function": "format_date"
+    },
+    "updated_at": {
+      "jira_field": null,
+      "field_type": "custom",
+      "mapper_function": "format_date"
+    },
+    "support_email": {
+      "jira_field": null,
+      "field_type": "custom",
+      "mapper_function": null
+    },
+    "to_emails": {
+      "jira_field": null,
+      "field_type": "custom",
+      "mapper_function": "extract_emails"
+    },
+    "from_email": {
+      "jira_field": null,
+      "field_type": "custom",
+      "mapper_function": null
+    },
+    "cc_emails": {
+      "jira_field": null,
+      "field_type": "custom",
+      "mapper_function": "extract_emails"
+    },
+    "bcc_emails": {
+      "jira_field": null,
+      "field_type": "custom",
+      "mapper_function": "extract_emails"
+    }
+  },
+  "attachment_fields": {
+    "id": {
+      "jira_field": null,
+      "field_type": "custom",
+      "mapper_function": null
+    },
+    "name": {
+      "jira_field": null,
+      "field_type": "custom",
+      "mapper_function": null
+    },
+    "url": {
+      "jira_field": null,
+      "field_type": "custom",
+      "mapper_function": null
+    },
+    "content_type": {
+      "jira_field": null,
+      "field_type": "custom",
+      "mapper_function": null
+    },
+    "size": {
+      "jira_field": null,
+      "field_type": "custom",
+      "mapper_function": null
+    },
+    "created_at": {
+      "jira_field": null,
+      "field_type": "custom",
+      "mapper_function": "format_date"
+    },
+    "ticket_id": {
+      "jira_field": null,
+      "field_type": "custom",
+      "mapper_function": null
+    }
+  },
+  "user_fields": {
+    "requester_name": {
+      "jira_field": null,
+      "field_type": "custom",
+      "mapper_function": null
+    },
+    "requester_email": {
+      "jira_field": null,
+      "field_type": "custom",
+      "mapper_function": null
+    },
+    "requester_type": {
+      "jira_field": null,
+      "field_type": "custom",
+      "mapper_function": null
+    },
+    "responder_name": {
+      "jira_field": null,
+      "field_type": "custom",
+      "mapper_function": null
+    },
+    "responder_email": {
+      "jira_field": null,
+      "field_type": "custom",
+      "mapper_function": null
+    },
+    "responder_type": {
+      "jira_field": null,
+      "field_type": "custom",
+      "mapper_function": null
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "custom_fields": {
+    "FD_Priority": {
+      "id": "customfield_10289",
+      "name": "FD_Priority",
+      "type": "string",
+      "description": "Freshdesk priority value"
+    },
+    "FD_Created_At": {
+      "id": "customfield_10290",
+      "name": "FD_Created_At",
+      "type": "string",
+      "description": "Freshdesk creation date"
+    },
+    "FD_Updated_At": {
+      "id": "customfield_10291",
+      "name": "FD_Updated_At",
+      "type": "string",
+      "description": "Freshdesk last update date"
+    },
+    "FD_Reporter": {
+      "id": "customfield_10292",
+      "name": "FD_Reporter",
+      "type": "string",
+      "description": "Freshdesk reporter information"
+    },
+    "FD_Assignee": {
+      "id": "customfield_10293",
+      "name": "FD_Assignee",
+      "type": "string",
+      "description": "Freshdesk assignee information"
+    },
+    "FD_Status": {
+      "id": "customfield_10294",
+      "name": "FD_Status",
+      "type": "string",
+      "description": "Freshdesk status value"
+    },
+    "FD_IssueType": {
+      "id": "customfield_10295",
+      "name": "FD_IssueType",
+      "type": "string",
+      "description": "Freshdesk issue type"
+    }
+  }
+}
