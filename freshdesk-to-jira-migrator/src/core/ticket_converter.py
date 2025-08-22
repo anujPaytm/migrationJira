@@ -85,134 +85,35 @@ class TicketConverter:
         
         # Map conversations using hierarchical approach
         if conversations:
-            conv_mapped_fields, conv_unmapped_fields = self.field_mapper.map_hierarchical_fields(conversations, "conversations", user_data)
+            conv_mapped_fields, conv_unmapped_fields = self.field_mapper.map_hierarchical_fields(conversations, "conversation_fields", user_data)
+            
+            # Format conversations in colon-separated format (regardless of where they're stored)
+            formatted_conversations = self._format_conversations_colon_separated(conversations, user_data)
             
             # Add mapped conversation fields to JIRA issue
             for field_name, field_value in conv_mapped_fields.items():
                 jira_issue["fields"][field_name] = field_value
             
-            # Add unmapped conversations to description with colon-separated format (exactly like test)
-            if conv_unmapped_fields:
-                # Define headers once - reordered with time fields first, then id
-                headers = ["created_at", "updated_at", "conversation_id", "user_id", "private", "to_email", "from_email", "cc_email", "bcc_email"]
-                
-                conversations_lines = ["**— Conversations —**", ':'.join(headers)]
-                
-                for conv in conv_unmapped_fields:
-                    # Get user information from user_data
-                    user_email = 'NA'
-                    if user_data and conv.get('user_id'):
-                        user_id = str(conv.get('user_id'))
-                        # Search in agents first
-                        agents = user_data.get('agents', {})
-                        if user_id in agents:
-                            agent = agents[user_id]
-                            if 'contact' in agent and agent['contact'].get('email'):
-                                user_email = agent['contact']['email']
-                        else:
-                            # Search in contacts
-                            contacts = user_data.get('contacts', {})
-                            if user_id in contacts:
-                                contact = contacts[user_id]
-                                if contact.get('email'):
-                                    user_email = contact['email']
-                    
-                    # Format dates
-                    created_at = conv.get('created_at', 'N/A')
-                    updated_at = conv.get('updated_at', 'N/A')
-                    
-                    # Format privacy status
-                    is_private = conv.get('private', False)
-                    privacy_status = "private" if is_private else "public"
-                    
-                    # Get email fields
-                    to_emails = ', '.join(conv.get('to_emails', []))
-                    from_email = conv.get('from_email', 'N/A')
-                    cc_emails = ', '.join(conv.get('cc_emails', []))
-                    bcc_emails = ', '.join(conv.get('bcc_emails', []))
-                    
-                    # Get values - reordered to match headers
-                    values = [
-                        str(created_at),
-                        str(updated_at),
-                        str(conv.get('id', 'N/A')),
-                        str(user_email),
-                        str(privacy_status),
-                        str(to_emails),
-                        str(from_email),
-                        str(cc_emails),
-                        str(bcc_emails)
-                    ]
-                    
-                    # Clean the body text (ONLY body_text, reject HTML body)
-                    body_text = conv.get('body_text', '') or clean_html(conv.get('body', ''))
-                    
-                    conversations_lines.extend([
-                        ':'.join(values),
-                        "",  # Add blank line before body text
-                        body_text,
-                        "---",
-                        ""  # Add extra blank line for better readability
-                    ])
-                
-                description_parts.append('\n'.join(conversations_lines))
+            # Add unmapped conversations to description
+            if conv_unmapped_fields and formatted_conversations:
+                description_parts.append(formatted_conversations)
         
         # Map attachments using hierarchical approach
         all_attachments = ticket_attachments + conversation_attachments if ticket_attachments and conversation_attachments else (ticket_attachments or conversation_attachments or [])
         
         if all_attachments:
-            att_mapped_fields, att_unmapped_fields = self.field_mapper.map_hierarchical_fields(all_attachments, "attachments", user_data)
+            att_mapped_fields, att_unmapped_fields = self.field_mapper.map_hierarchical_fields(all_attachments, "attachment_fields", user_data)
+            
+            # Format attachments in colon-separated format (regardless of where they're stored)
+            formatted_attachments = self._format_attachments_colon_separated(all_attachments, user_data)
             
             # Add mapped attachment fields to JIRA issue
             for field_name, field_value in att_mapped_fields.items():
                 jira_issue["fields"][field_name] = field_value
             
-            # Add unmapped attachments to description with colon-separated format (exactly like test)
-            if att_unmapped_fields:
-                # Define headers once - reordered with time fields first, then id
-                headers = ["created_at", "updated_at", "attachment_id", "newNamed file name", "size", "user_id", "conversation_id"]
-                
-                attachment_lines = ["**— Attachment Details —**", ':'.join(headers)]
-                
-                # Process ticket attachments
-                for attachment in att_unmapped_fields:
-                    # Get user information from user_data
-                    user_email = 'NA'
-                    if user_data and attachment.get('user_id'):
-                        user_id = str(attachment.get('user_id'))
-                        # Search in agents first
-                        agents = user_data.get('agents', {})
-                        if user_id in agents:
-                            agent = agents[user_id]
-                            if 'contact' in agent and agent['contact'].get('email'):
-                                user_email = agent['contact']['email']
-                        else:
-                            # Search in contacts
-                            contacts = user_data.get('contacts', {})
-                            if user_id in contacts:
-                                contact = contacts[user_id]
-                                if contact.get('email'):
-                                    user_email = contact['email']
-                    
-                    # Format attachment info
-                    attachment_id = attachment.get('id', 'N/A')
-                    original_name = attachment.get('name', 'N/A')
-                    new_name = f"{attachment_id}_{original_name}"  # attachmentId_nameofthefile
-                    
-                    # Get values - reordered to match headers
-                    values = [
-                        str(attachment.get('created_at', 'N/A')),
-                        str(attachment.get('updated_at', 'N/A')),
-                        str(attachment_id),
-                        str(new_name),
-                        str(attachment.get('size', 'N/A')),
-                        str(user_email),
-                        str(attachment.get('conversation_id', 'N/A'))
-                    ]
-                    
-                    attachment_lines.append(':'.join(values))
-                
-                description_parts.append('\n'.join(attachment_lines))
+            # Add unmapped attachments to description
+            if att_unmapped_fields and formatted_attachments:
+                description_parts.append(formatted_attachments)
         
         # Combine all description parts
         if description_parts:
@@ -393,3 +294,139 @@ class TicketConverter:
             "total_fields": len(ticket),
             "mapping_coverage": len(mapped_fields) / len(ticket) if ticket else 0
         }
+    
+    def _format_conversations_colon_separated(self, conversations: List[Dict[str, Any]], user_data: dict = None) -> str:
+        """
+        Format conversations in colon-separated format (regardless of where they're stored).
+        
+        Args:
+            conversations: List of conversation data
+            user_data: User data for context
+            
+        Returns:
+            Formatted conversations text
+        """
+        if not conversations:
+            return ""
+        
+        # Define headers once - reordered with time fields first, then id
+        headers = ["created_at", "updated_at", "conversation_id", "user_id", "private", "to_email", "from_email", "cc_email", "bcc_email"]
+        
+        conversations_lines = ["**— Conversations —**", ':'.join(headers)]
+        
+        for conv in conversations:
+            # Get user information from user_data
+            user_email = 'NA'
+            if user_data and conv.get('user_id'):
+                user_id = str(conv.get('user_id'))
+                # Search in agents first
+                agents = user_data.get('agents', {})
+                if user_id in agents:
+                    agent = agents[user_id]
+                    if 'contact' in agent and agent['contact'].get('email'):
+                        user_email = agent['contact']['email']
+                else:
+                    # Search in contacts
+                    contacts = user_data.get('contacts', {})
+                    if user_id in contacts:
+                        contact = contacts[user_id]
+                        if contact.get('email'):
+                            user_email = contact['email']
+            
+            # Format dates
+            created_at = conv.get('created_at', 'N/A')
+            updated_at = conv.get('updated_at', 'N/A')
+            
+            # Format privacy status
+            is_private = conv.get('private', False)
+            privacy_status = "private" if is_private else "public"
+            
+            # Get email fields
+            to_emails = ', '.join(conv.get('to_emails', []))
+            from_email = conv.get('from_email', 'N/A')
+            cc_emails = ', '.join(conv.get('cc_emails', []))
+            bcc_emails = ', '.join(conv.get('bcc_emails', []))
+            
+            # Get values - reordered to match headers
+            values = [
+                str(created_at),
+                str(updated_at),
+                str(conv.get('id', 'N/A')),
+                str(user_email),
+                str(privacy_status),
+                str(to_emails),
+                str(from_email),
+                str(cc_emails),
+                str(bcc_emails)
+            ]
+            
+            # Only use body_text, never body (HTML)
+            body_text = conv.get('body_text', '')
+            
+            conversations_lines.extend([
+                ':'.join(values),
+                "",  # Add blank line before body text
+                body_text,
+                "---",
+                ""  # Add extra blank line for better readability
+            ])
+        
+        return '\n'.join(conversations_lines)
+    
+    def _format_attachments_colon_separated(self, attachments: List[Dict[str, Any]], user_data: dict = None) -> str:
+        """
+        Format attachments in colon-separated format (regardless of where they're stored).
+        
+        Args:
+            attachments: List of attachment data
+            user_data: User data for context
+            
+        Returns:
+            Formatted attachments text
+        """
+        if not attachments:
+            return ""
+        
+        # Define headers once - reordered with time fields first, then id
+        headers = ["created_at", "updated_at", "attachment_id", "newNamed file name", "size", "user_id", "conversation_id"]
+        
+        attachment_lines = ["**— Attachment Details —**", ':'.join(headers)]
+        
+        for attachment in attachments:
+            # Get user information from user_data
+            user_email = 'NA'
+            if user_data and attachment.get('user_id'):
+                user_id = str(attachment.get('user_id'))
+                # Search in agents first
+                agents = user_data.get('agents', {})
+                if user_id in agents:
+                    agent = agents[user_id]
+                    if 'contact' in agent and agent['contact'].get('email'):
+                        user_email = agent['contact']['email']
+                else:
+                    # Search in contacts
+                    contacts = user_data.get('contacts', {})
+                    if user_id in contacts:
+                        contact = contacts[user_id]
+                        if contact.get('email'):
+                            user_email = contact['email']
+            
+            # Format attachment info
+            attachment_id = attachment.get('id', 'N/A')
+            original_name = attachment.get('name', 'N/A')
+            new_name = f"{attachment_id}_{original_name}"  # attachmentId_nameofthefile
+            
+            # Get values - reordered to match headers
+            values = [
+                str(attachment.get('created_at', 'N/A')),
+                str(attachment.get('updated_at', 'N/A')),
+                str(attachment_id),
+                str(new_name),
+                str(attachment.get('size', 'N/A')),
+                str(user_email),
+                str(attachment.get('conversation_id', 'N/A'))
+            ]
+            
+            attachment_lines.append(':'.join(values))
+        
+        return '\n'.join(attachment_lines)

@@ -5,7 +5,7 @@ These functions are referenced in the field_mapping.json configuration.
 
 import re
 from datetime import datetime
-from typing import Any, List, Union
+from typing import Any, List, Union, Optional
 
 
 def map_priority(freshdesk_priority: int) -> str:
@@ -228,26 +228,26 @@ def clean_html(html_text: str) -> str:
     return clean_text.strip()
 
 
-def map_boolean(value: Any) -> bool:
+def map_boolean(value: Any) -> str:
     """
-    Map various boolean representations to Python boolean.
+    Map various boolean representations to string for Jira.
     
     Args:
-        value: Value to convert to boolean
+        value: Value to convert to boolean string
         
     Returns:
-        Boolean value
+        Boolean string value ("true" or "false")
     """
     if isinstance(value, bool):
-        return value
+        return "true" if value else "false"
     
     if isinstance(value, str):
-        return value.lower() in ('true', '1', 'yes', 'on')
+        return "true" if value.lower() in ('true', '1', 'yes', 'on') else "false"
     
     if isinstance(value, (int, float)):
-        return bool(value)
+        return "true" if bool(value) else "false"
     
-    return False
+    return "false"
 
 
 def format_file_size(size_bytes: int) -> str:
@@ -270,6 +270,72 @@ def format_file_size(size_bytes: int) -> str:
     
     return f"{size_bytes:.1f} TB"
 
+def extract_tags(tag_list: List[str]) -> str:
+    """
+    Extract tags from a list and return as comma-separated string.
+    
+    Args:
+        tag_list: List of tags
+        
+    Returns:
+        Comma-separated tag string
+    """
+    if not tag_list:
+        return ""
+    return ", ".join(tag_list)
+
+def map_number(value: Any) -> str:
+    """
+    Map number values to string for Jira.
+    
+    Args:
+        value: Number value from Freshdesk
+        
+    Returns:
+        String value for Jira or empty string if invalid
+    """
+    if value is None:
+        return ""
+    try:
+        return str(int(value))
+    except (ValueError, TypeError):
+        return ""
+
+def map_custom_fields(custom_fields: dict) -> str:
+    """
+    Map custom fields to a string representation.
+    
+    Args:
+        custom_fields: Dictionary of custom fields from Freshdesk
+        
+    Returns:
+        String representation of custom fields
+    """
+    if not custom_fields:
+        return ""
+    
+    # Convert custom fields to a readable string format
+    formatted_fields = []
+    for field_name, field_value in custom_fields.items():
+        if field_value is not None and field_value != "":
+            formatted_fields.append(f"{field_name}: {field_value}")
+    
+    return "; ".join(formatted_fields)
+
+def map_id_to_string(value: Any) -> str:
+    """
+    Map ID values to string for Jira.
+    
+    Args:
+        value: ID value from Freshdesk
+        
+    Returns:
+        String value for Jira
+    """
+    if value is None:
+        return ""
+    return str(value)
+
 
 # Registry of all mapper functions for easy lookup
 MAPPER_FUNCTIONS = {
@@ -278,11 +344,15 @@ MAPPER_FUNCTIONS = {
     'map_source': map_source,
     'map_user_from_id': map_user_from_id,
     'extract_emails': extract_emails,
+    'extract_tags': extract_tags,
     'format_date': format_date,
     'join_list': join_list,
     'truncate_text': truncate_text,
     'clean_html': clean_html,
     'map_boolean': map_boolean,
+    'map_number': map_number,
+    'map_custom_fields': map_custom_fields,
+    'map_id_to_string': map_id_to_string,
     'format_file_size': format_file_size
 }
 

@@ -192,6 +192,18 @@ class FieldMapper:
             jira_field, mapped_value = self.map_field_value(field_name, field_value, "ticket_fields", user_data)
             if jira_field and mapped_value is not None:
                 mapped_fields[jira_field] = mapped_value
+            elif jira_field and mapped_value is False:  # Allow False boolean values
+                mapped_fields[jira_field] = mapped_value
+            elif jira_field and mapped_value == 0:  # Allow zero numeric values
+                mapped_fields[jira_field] = mapped_value
+            elif jira_field and mapped_value == "":  # Allow empty string values
+                mapped_fields[jira_field] = mapped_value
+            elif jira_field and mapped_value == "false":  # Allow "false" string values
+                mapped_fields[jira_field] = mapped_value
+            elif jira_field and mapped_value == "0":  # Allow "0" string values
+                mapped_fields[jira_field] = mapped_value
+            elif jira_field and isinstance(mapped_value, str):  # Allow any string values
+                mapped_fields[jira_field] = mapped_value
         
         return mapped_fields, unmapped_fields
     
@@ -276,7 +288,7 @@ class FieldMapper:
         
         Args:
             data: Data to map (ticket_data, conversations, attachments)
-            data_type: Type of data ('ticket_metadata', 'conversations', 'attachments')
+            data_type: Type of data ('ticket_fields', 'conversation_fields', 'attachment_fields', 'user_fields')
             user_data: User data for context
             
         Returns:
@@ -292,25 +304,45 @@ class FieldMapper:
             jira_field = parent_mapping.get("jira_field")
             
             if jira_field:
-                # Format all data as a single field value
-                formatted_data = self._format_data_for_parent_field(data, data_type)
+                # Format all data as a single field value using colon-separated format
+                if data_type == "conversation_fields":
+                    formatted_data = self._format_conversations_for_parent(data, user_data)
+                elif data_type == "attachment_fields":
+                    formatted_data = self._format_attachments_for_parent(data, user_data)
+                else:
+                    formatted_data = self._format_data_for_parent_field(data, data_type)
                 mapped_fields[jira_field] = formatted_data
                 return mapped_fields, unmapped_fields
         else:
             # Parent field doesn't exist - check individual fields
-            field_category = f"{data_type.replace('_', '')}_fields"
+            field_category = data_type  # Use the exact category name
             
             # Handle different data types
             if isinstance(data, dict):
                 for field_name, field_value in data.items():
+                    # Skip HTML fields - use their text counterparts
+                    if field_name in ['description', 'body', 'structured_description']:
+                        continue
+                    
                     jira_field, mapped_value = self.map_field_value(field_name, field_value, field_category, user_data)
                     if jira_field and mapped_value is not None:
                         mapped_fields[jira_field] = mapped_value
                     else:
                         unmapped_fields[field_name] = field_value
             elif isinstance(data, list):
-                # For lists (like conversations, attachments), return the list as unmapped
-                unmapped_fields = data
+                # For lists (like conversations, attachments), filter out HTML fields
+                filtered_data = []
+                for item in data:
+                    if isinstance(item, dict):
+                        # Create a copy without HTML fields
+                        filtered_item = {}
+                        for key, value in item.items():
+                            if key not in ['body', 'description', 'structured_description']:
+                                filtered_item[key] = value
+                        filtered_data.append(filtered_item)
+                    else:
+                        filtered_data.append(item)
+                unmapped_fields = filtered_data
             else:
                 unmapped_fields = data
         
@@ -341,6 +373,10 @@ class FieldMapper:
         lines = ["**— Freshdesk Ticket Metadata —**"]
         
         for field_name, field_value in data.items():
+            # Skip HTML fields - only use their text counterparts
+            if field_name in ['description', 'body', 'structured_description']:
+                continue
+                
             if field_value is not None and field_value != "":
                 if isinstance(field_value, list):
                     field_value = ', '.join(str(v) for v in field_value)
@@ -348,8 +384,8 @@ class FieldMapper:
         
         return '\n'.join(lines)
     
-    def _format_conversations_for_parent(self, data: List[Dict[str, Any]]) -> str:
-        """Format conversations for parent field storage."""
+    def _format_conversations_for_parent(self, data: List[Dict[str, Any]], user_data: dict = None) -> str:
+        """Format conversations for parent field storage using colon-separated format."""
         if not data:
             return ""
         
@@ -357,20 +393,48 @@ class FieldMapper:
         lines = ["**— Conversations —**", ':'.join(headers)]
         
         for conv in data:
-            # Format conversation data (simplified version)
+            # Get user information from user_data
+            user_email = 'NA'
+            if user_data and conv.get('user_id'):
+                user_id = str(conv.get('user_id'))
+                # Search in agents first
+                agents = user_data.get('agents', {})
+                if user_id in agents:
+                    agent = agents[user_id]
+                    if 'contact' in agent and agent['contact'].get('email'):
+                        user_email = agent['contact']['email']
+                else:
+                    # Search in contacts
+                    contacts = user_data.get('contacts', {})
+                    if user_id in contacts:
+                        contact = contacts[user_id]
+                        if contact.get('email'):
+                            user_email = contact['email']
+            
+            # Format privacy status
+            is_private = conv.get('private', False)
+            privacy_status = "private" if is_private else "public"
+            
+            # Get email fields
+            to_emails = ', '.join(conv.get('to_emails', []))
+            from_email = conv.get('from_email', 'N/A')
+            cc_emails = ', '.join(conv.get('cc_emails', []))
+            bcc_emails = ', '.join(conv.get('bcc_emails', []))
+            
             values = [
                 str(conv.get('created_at', 'N/A')),
                 str(conv.get('updated_at', 'N/A')),
                 str(conv.get('id', 'N/A')),
-                str(conv.get('user_id', 'N/A')),
-                str(conv.get('private', False)),
-                str(', '.join(conv.get('to_emails', []))),
-                str(conv.get('from_email', 'N/A')),
-                str(', '.join(conv.get('cc_emails', []))),
-                str(', '.join(conv.get('bcc_emails', [])))
+                str(user_email),
+                str(privacy_status),
+                str(to_emails),
+                str(from_email),
+                str(cc_emails),
+                str(bcc_emails)
             ]
             
-            body_text = conv.get('body_text', '') or clean_html(conv.get('body', ''))
+            # Only use body_text, never body (HTML)
+            body_text = conv.get('body_text', '')
             
             lines.extend([
                 ':'.join(values),
@@ -382,8 +446,8 @@ class FieldMapper:
         
         return '\n'.join(lines)
     
-    def _format_attachments_for_parent(self, data: List[Dict[str, Any]]) -> str:
-        """Format attachments for parent field storage."""
+    def _format_attachments_for_parent(self, data: List[Dict[str, Any]], user_data: dict = None) -> str:
+        """Format attachments for parent field storage using colon-separated format."""
         if not data:
             return ""
         
@@ -391,6 +455,24 @@ class FieldMapper:
         lines = ["**— Attachment Details —**", ':'.join(headers)]
         
         for attachment in data:
+            # Get user information from user_data
+            user_email = 'NA'
+            if user_data and attachment.get('user_id'):
+                user_id = str(attachment.get('user_id'))
+                # Search in agents first
+                agents = user_data.get('agents', {})
+                if user_id in agents:
+                    agent = agents[user_id]
+                    if 'contact' in agent and agent['contact'].get('email'):
+                        user_email = agent['contact']['email']
+                else:
+                    # Search in contacts
+                    contacts = user_data.get('contacts', {})
+                    if user_id in contacts:
+                        contact = contacts[user_id]
+                        if contact.get('email'):
+                            user_email = contact['email']
+            
             attachment_id = attachment.get('id', 'N/A')
             original_name = attachment.get('name', 'N/A')
             new_name = f"{attachment_id}_{original_name}"
@@ -401,7 +483,7 @@ class FieldMapper:
                 str(attachment_id),
                 str(new_name),
                 str(attachment.get('size', 'N/A')),
-                str(attachment.get('user_id', 'N/A')),
+                str(user_email),
                 str(attachment.get('conversation_id', 'N/A'))
             ]
             

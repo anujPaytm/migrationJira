@@ -1,22 +1,28 @@
 {
   "parent_fields": {
-    "ticket_metadata": {
+    "ticket_fields": {
       "jira_field": null,
       "field_type": "custom",
       "mapper_function": null,
       "description": "All ticket metadata fields"
     },
-    "conversations": {
-      "jira_field": null,
-      "field_type": "custom", 
+    "conversation_fields": {
+      "jira_field": "customfield_10352",
+      "field_type": "custom",
       "mapper_function": null,
       "description": "All conversation data"
     },
-    "attachments": {
-      "jira_field": null,
+    "attachment_fields": {
+      "jira_field": "customfield_10353",
       "field_type": "custom",
       "mapper_function": null,
       "description": "All attachment details"
+    },
+    "user_fields": {
+      "jira_field": null,
+      "field_type": "custom",
+      "mapper_function": null,
+      "description": "All user details"
     }
   },
   "ticket_fields": {
@@ -59,6 +65,141 @@
       "jira_field": "customfield_10293",
       "field_type": "custom",
       "mapper_function": "map_user_from_id"
+    },
+    "cc_emails": {
+      "jira_field": "customfield_10322",
+      "field_type": "custom",
+      "mapper_function": "extract_emails"
+    },
+    "fwd_emails": {
+      "jira_field": "customfield_10323",
+      "field_type": "custom",
+      "mapper_function": "extract_emails"
+    },
+    "reply_cc_emails": {
+      "jira_field": "customfield_10324",
+      "field_type": "custom",
+      "mapper_function": "extract_emails"
+    },
+    "ticket_cc_emails": {
+      "jira_field": "customfield_10325",
+      "field_type": "custom",
+      "mapper_function": "extract_emails"
+    },
+    "ticket_bcc_emails": {
+      "jira_field": "customfield_10326",
+      "field_type": "custom",
+      "mapper_function": "extract_emails"
+    },
+    "to_emails": {
+      "jira_field": "customfield_10337",
+      "field_type": "custom",
+      "mapper_function": "extract_emails"
+    },
+    "support_email": {
+      "jira_field": "customfield_10336",
+      "field_type": "custom",
+      "mapper_function": null
+    },
+    "group_id": {
+      "jira_field": "customfield_10330",
+      "field_type": "custom",
+      "mapper_function": "map_id_to_string"
+    },
+    "company_id": {
+      "jira_field": "customfield_10334",
+      "field_type": "custom",
+      "mapper_function": "map_id_to_string"
+    },
+    "source": {
+      "jira_field": "customfield_10333",
+      "field_type": "custom",
+      "mapper_function": "map_source"
+    },
+    "source_additional_info": {
+      "jira_field": "customfield_10346",
+      "field_type": "custom",
+      "mapper_function": null
+    },
+    "due_by": {
+      "jira_field": "customfield_10342",
+      "field_type": "custom",
+      "mapper_function": "format_date"
+    },
+    "fr_due_by": {
+      "jira_field": "customfield_10343",
+      "field_type": "custom",
+      "mapper_function": "format_date"
+    },
+    "is_escalated": {
+      "jira_field": "customfield_10344",
+      "field_type": "custom",
+      "mapper_function": "map_boolean"
+    },
+    "fr_escalated": {
+      "jira_field": "customfield_10327",
+      "field_type": "custom",
+      "mapper_function": "map_boolean"
+    },
+    "spam": {
+      "jira_field": "customfield_10328",
+      "field_type": "custom",
+      "mapper_function": "map_boolean"
+    },
+    "email_config_id": {
+      "jira_field": "customfield_10329",
+      "field_type": "custom",
+      "mapper_function": "map_id_to_string"
+    },
+    "product_id": {
+      "jira_field": "customfield_10338",
+      "field_type": "custom",
+      "mapper_function": "map_id_to_string"
+    },
+    "association_type": {
+      "jira_field": "customfield_10335",
+      "field_type": "custom",
+      "mapper_function": null
+    },
+    "tags": {
+      "jira_field": "customfield_10345",
+      "field_type": "custom",
+      "mapper_function": "extract_tags"
+    },
+    "sentiment_score": {
+      "jira_field": "customfield_10348",
+      "field_type": "custom",
+      "mapper_function": "map_number"
+    },
+    "initial_sentiment_score": {
+      "jira_field": "customfield_10349",
+      "field_type": "custom",
+      "mapper_function": "map_number"
+    },
+    "structured_description": {
+      "jira_field": "customfield_10347",
+      "field_type": "custom",
+      "mapper_function": null
+    },
+    "nr_due_by": {
+      "jira_field": "customfield_10350",
+      "field_type": "custom",
+      "mapper_function": "format_date"
+    },
+    "nr_escalated": {
+      "jira_field": "customfield_10351",
+      "field_type": "custom",
+      "mapper_function": "map_boolean"
+    },
+    "ticket_id": {
+      "jira_field": "customfield_10339",
+      "field_type": "custom",
+      "mapper_function": "map_id_to_string"
+    },
+    "custom_fields": {
+      "jira_field": "customfield_10354",
+      "field_type": "custom",
+      "mapper_function": "map_custom_fields"
     }
   },
   "conversation_fields": {

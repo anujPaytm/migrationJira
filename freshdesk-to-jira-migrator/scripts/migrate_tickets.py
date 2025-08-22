@@ -25,6 +25,7 @@ from core.data_loader import DataLoader
 from core.field_mapper import FieldMapper
 from core.ticket_converter import TicketConverter
 from utils.bulk_upload import BulkAttachmentUploader
+from utils.tracker import MigrationTracker
 
 
 class JiraConfig:
@@ -69,6 +70,7 @@ class TicketMigrator:
             'email': config.email,
             'api_token': config.api_token
         })
+        self.tracker = MigrationTracker()
         
         # Migration statistics
         self.stats = {
@@ -129,11 +131,16 @@ class TicketMigrator:
         print(f"\n🔄 Migrating ticket {ticket_id}...")
         
         try:
+            # Update tracker status to in_progress
+            self.tracker.update_ticket_status(ticket_id, "in_progress")
+            
             # Load ticket data
             ticket_data = self.data_loader.load_ticket_data(ticket_id)
             
             if not ticket_data['ticket_details']:
-                print(f"❌ No ticket details found for ticket {ticket_id}")
+                error_msg = f"No ticket details found for ticket {ticket_id}"
+                print(f"❌ {error_msg}")
+                self.tracker.update_ticket_status(ticket_id, "failed", reason=error_msg)
                 return False
             
             # Convert to JIRA issue
@@ -151,6 +158,7 @@ class TicketMigrator:
             if dry_run:
                 print(f"🔍 Dry run - would create issue:")
                 print(json.dumps(jira_issue, indent=2))
+                self.tracker.update_ticket_status(ticket_id, "dry_run_completed")
                 return True
             
             # Create JIRA issue
@@ -160,11 +168,16 @@ class TicketMigrator:
             # Upload attachments
             self._upload_attachments(issue.key, ticket_data)
             
+            # Update tracker with success
+            self.tracker.update_ticket_status(ticket_id, "success", jira_id=issue.key)
+            
             self.stats['successful_migrations'] += 1
             return True
             
         except Exception as e:
-            print(f"❌ Failed to migrate ticket {ticket_id}: {e}")
+            error_msg = str(e)
+            print(f"❌ Failed to migrate ticket {ticket_id}: {error_msg}")
+            self.tracker.update_ticket_status(ticket_id, "failed", reason=error_msg)
             self.stats['failed_migrations'] += 1
             return False
     
@@ -257,6 +270,9 @@ class TicketMigrator:
         Returns:
             Migration summary dictionary
         """
+        # Get tracker summary
+        tracker_summary = self.tracker.get_migration_summary()
+        
         return {
             'total_tickets': self.stats['total_tickets'],
             'successful_migrations': self.stats['successful_migrations'],
@@ -264,7 +280,8 @@ class TicketMigrator:
             'success_rate': self.stats['successful_migrations'] / self.stats['total_tickets'] if self.stats['total_tickets'] > 0 else 0,
             'total_attachments': self.stats['total_attachments'],
             'successful_attachments': self.stats['successful_attachments'],
-            'attachment_success_rate': self.stats['successful_attachments'] / self.stats['total_attachments'] if self.stats['total_attachments'] > 0 else 0
+            'attachment_success_rate': self.stats['successful_attachments'] / self.stats['total_attachments'] if self.stats['total_attachments'] > 0 else 0,
+            'tracker_summary': tracker_summary
         }
 
 

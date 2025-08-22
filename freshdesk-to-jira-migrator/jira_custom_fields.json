@@ -1,0 +1,1976 @@
+[
+  {
+    "id": "customfield_10000",
+    "name": "Development",
+    "type": "any",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10000]",
+      "development"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10001",
+    "name": "Team",
+    "type": "team",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Team[Team]",
+      "cf[10001]",
+      "Team"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10002",
+    "name": "Organizations",
+    "type": "array",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10002]",
+      "Organizations"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10003",
+    "name": "Approvers",
+    "type": "array",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Approvers[User Picker (multiple users)]",
+      "cf[10003]",
+      "Approvers"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10004",
+    "name": "Impact",
+    "type": "option",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Impact",
+      "cf[10004]",
+      "Impact[Dropdown]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10005",
+    "name": "Change type",
+    "type": "option",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Change type[Dropdown]",
+      "cf[10005]",
+      "Change type"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10006",
+    "name": "Change risk",
+    "type": "option",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10006]",
+      "Change risk",
+      "Change risk[Dropdown]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10007",
+    "name": "Change reason",
+    "type": "option",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Change reason",
+      "Change reason[Dropdown]",
+      "cf[10007]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10008",
+    "name": "Actual start",
+    "type": "datetime",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Actual start[Time stamp]",
+      "cf[10008]",
+      "Actual start"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10009",
+    "name": "Actual end",
+    "type": "datetime",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Actual end[Time stamp]",
+      "cf[10009]",
+      "Actual end"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10010",
+    "name": "Request Type",
+    "type": "sd-customerrequesttype",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Request Type",
+      "cf[10010]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10011",
+    "name": "Epic Name",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Epic Name",
+      "cf[10011]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10012",
+    "name": "Epic Status",
+    "type": "option",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Epic Status",
+      "cf[10012]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10013",
+    "name": "Epic Color",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10013]",
+      "Epic Color"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10014",
+    "name": "Epic Link",
+    "type": "any",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10014]",
+      "Epic Link"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10015",
+    "name": "Start date",
+    "type": "date",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10015]",
+      "Start date",
+      "Start date[Date]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10016",
+    "name": "Story point estimate",
+    "type": "number",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10016]",
+      "Story point estimate"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10017",
+    "name": "Issue color",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10017]",
+      "Issue color"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10018",
+    "name": "Parent Link",
+    "type": "any",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Parent Link",
+      "cf[10018]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10019",
+    "name": "Rank",
+    "type": "any",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10019]",
+      "Rank"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10020",
+    "name": "Sprint",
+    "type": "array",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10020]",
+      "Sprint"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10021",
+    "name": "Flagged",
+    "type": "array",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Flagged",
+      "Flagged[Checkboxes]",
+      "cf[10021]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10022",
+    "name": "Target start",
+    "type": "date",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Target start",
+      "cf[10022]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10023",
+    "name": "Target end",
+    "type": "date",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10023]",
+      "Target end"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10024",
+    "name": "Sentiment",
+    "type": "array",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10024]",
+      "Sentiment"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10025",
+    "name": "[CHART] Date of First Response",
+    "type": "datetime",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "[CHART] Date of First Response[Date of first response]",
+      "[CHART] Date of First Response",
+      "cf[10025]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10026",
+    "name": "[CHART] Time in Status",
+    "type": "any",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10026]",
+      "[CHART] Time in Status[Time in Status]",
+      "[CHART] Time in Status"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10027",
+    "name": "Goals",
+    "type": "array",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Goals",
+      "Goals[Goals]",
+      "cf[10027]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10028",
+    "name": "Submitted forms",
+    "type": "number",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10028]",
+      "Submitted forms"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10029",
+    "name": "Open forms",
+    "type": "number",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Open forms",
+      "cf[10029]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10030",
+    "name": "Locked forms",
+    "type": "number",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10030]",
+      "Locked forms"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10031",
+    "name": "Total forms",
+    "type": "number",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10031]",
+      "Total forms"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10033",
+    "name": "Vulnerability",
+    "type": "any",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10033]",
+      "Vulnerability"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10034",
+    "name": "Design",
+    "type": "array",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Design",
+      "cf[10034]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10035",
+    "name": "Project overview key",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10035]",
+      "Project overview key"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10036",
+    "name": "Project overview status",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Project overview status",
+      "cf[10036]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10037",
+    "name": "Work category",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Work category",
+      "cf[10037]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10038",
+    "name": "Approvals",
+    "type": "sd-approvals",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10038]",
+      "Approvals",
+      "Approvals[Approvals]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10039",
+    "name": "Request participants",
+    "type": "array",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10039]",
+      "Request participants"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10040",
+    "name": "Satisfaction",
+    "type": "sd-feedback",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10040]",
+      "Satisfaction"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10041",
+    "name": "Satisfaction date",
+    "type": "datetime",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Satisfaction date",
+      "cf[10041]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10042",
+    "name": "Request language",
+    "type": "sd-request-lang",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10042]",
+      "Request language"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10043",
+    "name": "Urgency",
+    "type": "option",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Urgency[Dropdown]",
+      "Urgency",
+      "cf[10043]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10044",
+    "name": "Affected services",
+    "type": "array",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10044]",
+      "Affected services"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10045",
+    "name": "Pending reason",
+    "type": "option",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10045]",
+      "Pending reason",
+      "Pending reason[Dropdown]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10046",
+    "name": "Approver groups",
+    "type": "array",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Approver groups[Group Picker (multiple groups)]",
+      "cf[10046]",
+      "Approver groups"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10047",
+    "name": "Major incident",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Major incident",
+      "cf[10047]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10048",
+    "name": "Responders",
+    "type": "array",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10049",
+    "name": "Severity",
+    "type": "option",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10049]",
+      "Severity",
+      "Severity[Dropdown]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10050",
+    "name": "Affected hardware",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Affected hardware[Short text]",
+      "cf[10050]",
+      "Affected hardware"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10051",
+    "name": "Time to resolution",
+    "type": "sd-servicelevelagreement",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10051]",
+      "Time to resolution"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10052",
+    "name": "Time to first response",
+    "type": "sd-servicelevelagreement",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10052]",
+      "Time to first response"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10053",
+    "name": "Time to close after resolution",
+    "type": "sd-servicelevelagreement",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10053]",
+      "Time to close after resolution"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10054",
+    "name": "Story Points",
+    "type": "number",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Story Points[Number]",
+      "cf[10054]",
+      "Story Points"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10058",
+    "name": "Planned start",
+    "type": "datetime",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Planned start[Time stamp]",
+      "cf[10058]",
+      "Planned start"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10059",
+    "name": "Planned end",
+    "type": "datetime",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Planned end",
+      "Planned end[Time stamp]",
+      "cf[10059]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10060",
+    "name": "Implementation plan",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Implementation plan[Paragraph]",
+      "cf[10060]",
+      "Implementation plan"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10061",
+    "name": "Backout plan",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Backout plan",
+      "Backout plan[Paragraph]",
+      "cf[10061]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10062",
+    "name": "Test plan",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10062]",
+      "Test plan",
+      "Test plan[Paragraph]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10063",
+    "name": "Source",
+    "type": "option",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Source[Dropdown]",
+      "cf[10063]",
+      "Source"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10064",
+    "name": "Investigation reason",
+    "type": "option",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10064]",
+      "Investigation reason",
+      "Investigation reason[Dropdown]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10065",
+    "name": "Root cause",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Root cause[Paragraph]",
+      "Root cause",
+      "cf[10065]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10066",
+    "name": "Workaround",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Workaround",
+      "Workaround[Paragraph]",
+      "cf[10066]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10067",
+    "name": "Time to review normal change",
+    "type": "sd-servicelevelagreement",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Time to review normal change",
+      "cf[10067]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10091",
+    "name": "Focus Areas",
+    "type": "array",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10126",
+    "name": "Idea archived",
+    "type": "option",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10126]",
+      "Idea archived[Dropdown]",
+      "Idea archived"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10127",
+    "name": "Idea archived by",
+    "type": "array",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10127]",
+      "Idea archived by",
+      "Idea archived by[People]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10128",
+    "name": "Idea archived on",
+    "type": "datetime",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Idea archived on[Time stamp]",
+      "Idea archived on",
+      "cf[10128]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10129",
+    "name": "Atlassian project",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10129]",
+      "Atlassian project"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10130",
+    "name": "Atlassian project status",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10130]",
+      "Atlassian project status"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10131",
+    "name": "Insights",
+    "type": "number",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10131]",
+      "Insights"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10132",
+    "name": "Comments",
+    "type": "number",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10132]",
+      "Comments"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10133",
+    "name": "Linked items",
+    "type": "number",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10133]",
+      "Linked items"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10134",
+    "name": "Delivery progress",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10134]",
+      "Delivery progress"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10135",
+    "name": "Delivery status",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10135]",
+      "Delivery status"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10158",
+    "name": "Business Objective",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Business Objective[Short text]",
+      "cf[10158]",
+      "Business Objective"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10159",
+    "name": "Category",
+    "type": "option",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Category[Dropdown]",
+      "cf[10159]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10160",
+    "name": "Key Communication (for TG)",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Key Communication (for TG)[Paragraph]",
+      "cf[10160]",
+      "Key Communication (for TG)"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10161",
+    "name": "Requirement Type",
+    "type": "option",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Requirement Type[Dropdown]",
+      "cf[10161]",
+      "Requirement Type"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10162",
+    "name": "Reference Document Link",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Reference Document Link",
+      "cf[10162]",
+      "Reference Document Link[URL Field]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10163",
+    "name": "Language/Vernacular",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Language/Vernacular[Short text]",
+      "cf[10163]",
+      "Language/Vernacular"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10164",
+    "name": "Creative Type",
+    "type": "array",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Creative Type",
+      "Creative Type[Checkboxes]",
+      "cf[10164]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10165",
+    "name": "Count of Creatives",
+    "type": "number",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10165]",
+      "Count of Creatives",
+      "Count of Creatives[Number]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10166",
+    "name": "Target Group ",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Target Group [Short text]",
+      "Target Group ",
+      "cf[10166]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10167",
+    "name": "Call to Action ",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Call to Action [Short text]",
+      "cf[10167]",
+      "Call to Action "
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10190",
+    "name": "Landing Page Link",
+    "type": "option",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Landing Page Link[Dropdown]",
+      "cf[10190]",
+      "Landing Page Link"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10223",
+    "name": "This above brief is Read & Approved by",
+    "type": "array",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "This above brief is Read & Approved by[Select List (multiple choices)]",
+      "cf[10223]",
+      "This above brief is Read & Approved by"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10224",
+    "name": "For Video Request ",
+    "type": "array",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "For Video Request ",
+      "For Video Request [Select List (multiple choices)]",
+      "cf[10224]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10225",
+    "name": "Promo Code ",
+    "type": "array",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Promo Code [Select List (multiple choices)]",
+      "cf[10225]",
+      "Promo Code "
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10226",
+    "name": "Date of going live ",
+    "type": "date",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10226]",
+      "Date of going live [Date]",
+      "Date of going live "
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10227",
+    "name": "Landing Page link here",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Landing Page link here",
+      "Landing Page link here[URL Field]",
+      "cf[10227]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10256",
+    "name": "Link: Content Flow ",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Link: Content Flow [URL Field]",
+      "cf[10256]",
+      "Link: Content Flow "
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10257",
+    "name": "Link: Creatives/App screen",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Link: Creatives/App screen[URL Field]",
+      "Link: Creatives/App screen",
+      "cf[10257]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10258",
+    "name": "Character Animation & Voice Over(V.O.) Requirement",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10258]",
+      "Character Animation & Voice Over(V.O.) Requirement",
+      "Character Animation & Voice Over(V.O.) Requirement[Short text]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10259",
+    "name": "Promo Code here",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10259]",
+      "Promo Code here",
+      "Promo Code here[Short text]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10289",
+    "name": "FD_Priority",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "FD_Priority[Paragraph]",
+      "cf[10289]",
+      "FD_Priority"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10290",
+    "name": "FD_Created_At",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10290]",
+      "FD_Created_At",
+      "FD_Created_At[Paragraph]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10291",
+    "name": "FD_Updated_At",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10291]",
+      "FD_Updated_At[Paragraph]",
+      "FD_Updated_At"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10292",
+    "name": "FD_Reporter",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "FD_Reporter",
+      "cf[10292]",
+      "FD_Reporter[Paragraph]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10293",
+    "name": "FD_Assignee",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "FD_Assignee",
+      "FD_Assignee[Paragraph]",
+      "cf[10293]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10294",
+    "name": "FD_Status",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10294]",
+      "FD_Status[Paragraph]",
+      "FD_Status"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10295",
+    "name": "FD_IssueType",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10295]",
+      "FD_IssueType[Paragraph]",
+      "FD_IssueType"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10296",
+    "name": "Time to done",
+    "type": "sd-servicelevelagreement",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "Time to done",
+      "cf[10296]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10322",
+    "name": "FD_cc_emails",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "FD_cc_emails[Paragraph]",
+      "cf[10322]",
+      "FD_cc_emails"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10323",
+    "name": "FD_fwd_emails",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "FD_fwd_emails",
+      "FD_fwd_emails[Paragraph]",
+      "cf[10323]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10324",
+    "name": "FD_reply_cc_emails",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "FD_reply_cc_emails[Paragraph]",
+      "cf[10324]",
+      "FD_reply_cc_emails"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10325",
+    "name": "FD_ticket_cc_emails",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10325]",
+      "FD_ticket_cc_emails[Paragraph]",
+      "FD_ticket_cc_emails"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10326",
+    "name": "FD_ticket_bcc_emails",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "FD_ticket_bcc_emails[Paragraph]",
+      "FD_ticket_bcc_emails",
+      "cf[10326]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10327",
+    "name": "FD_fr_escalated",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "FD_fr_escalated[Paragraph]",
+      "FD_fr_escalated",
+      "cf[10327]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10328",
+    "name": "FD_spam",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "FD_spam[Paragraph]",
+      "cf[10328]",
+      "FD_spam"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10329",
+    "name": "FD_email_config_id",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10329]",
+      "FD_email_config_id[Paragraph]",
+      "FD_email_config_id"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10330",
+    "name": "FD_group_id",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "FD_group_id[Paragraph]",
+      "FD_group_id",
+      "cf[10330]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10331",
+    "name": "FD_requester_id",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "FD_requester_id[Paragraph]",
+      "cf[10331]",
+      "FD_requester_id"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10332",
+    "name": "FD_responder_id",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "FD_responder_id[Paragraph]",
+      "FD_responder_id",
+      "cf[10332]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10333",
+    "name": "FD_source",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "FD_source[Paragraph]",
+      "cf[10333]",
+      "FD_source"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10334",
+    "name": "FD_company_id",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "FD_company_id",
+      "FD_company_id[Paragraph]",
+      "cf[10334]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10335",
+    "name": "FD_association_type",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10335]",
+      "FD_association_type[Paragraph]",
+      "FD_association_type"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10336",
+    "name": "FD_support_email",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10336]",
+      "FD_support_email[Paragraph]",
+      "FD_support_email"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10337",
+    "name": "FD_to_emails",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "FD_to_emails",
+      "FD_to_emails[Paragraph]",
+      "cf[10337]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10338",
+    "name": "FD_product_id",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "FD_product_id",
+      "FD_product_id[Paragraph]",
+      "cf[10338]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10339",
+    "name": "FD_ticket_id",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "FD_ticket_id[Paragraph]",
+      "cf[10339]",
+      "FD_ticket_id"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10341",
+    "name": "FD_issue_type",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "FD_issue_type[Paragraph]",
+      "cf[10341]",
+      "FD_issue_type"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10342",
+    "name": "FD_due_by",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "FD_due_by[Paragraph]",
+      "cf[10342]",
+      "FD_due_by"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10343",
+    "name": "FD_fr_due_by",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10343]",
+      "FD_fr_due_by[Paragraph]",
+      "FD_fr_due_by"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10344",
+    "name": "FD_is_escalated",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "FD_is_escalated",
+      "cf[10344]",
+      "FD_is_escalated[Paragraph]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10345",
+    "name": "FD_tags",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "FD_tags",
+      "FD_tags[Paragraph]",
+      "cf[10345]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10346",
+    "name": "FD_source_additional_info",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10346]",
+      "FD_source_additional_info[Paragraph]",
+      "FD_source_additional_info"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10347",
+    "name": "FD_structured_description",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "FD_structured_description[Paragraph]",
+      "cf[10347]",
+      "FD_structured_description"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10348",
+    "name": "FD_sentiment_score",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "FD_sentiment_score[Paragraph]",
+      "cf[10348]",
+      "FD_sentiment_score"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10349",
+    "name": "FD_initial_sentiment_score",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "FD_initial_sentiment_score",
+      "FD_initial_sentiment_score[Paragraph]",
+      "cf[10349]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10350",
+    "name": "FD_nr_due_by",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "FD_nr_due_by[Paragraph]",
+      "cf[10350]",
+      "FD_nr_due_by"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10351",
+    "name": "FD_nr_escalated",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10351]",
+      "FD_nr_escalated[Paragraph]",
+      "FD_nr_escalated"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10352",
+    "name": "FD_conversations",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "FD_conversations",
+      "FD_conversations[Paragraph]",
+      "cf[10352]"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10353",
+    "name": "FD_attachment_details",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "cf[10353]",
+      "FD_attachment_details[Paragraph]",
+      "FD_attachment_details"
+    ],
+    "scope": {}
+  },
+  {
+    "id": "customfield_10354",
+    "name": "FD_custom_fields",
+    "type": "string",
+    "custom": true,
+    "searchable": true,
+    "orderable": true,
+    "navigable": true,
+    "clauseNames": [
+      "FD_custom_fields",
+      "cf[10354]",
+      "FD_custom_fields[Paragraph]"
+    ],
+    "scope": {}
+  }
+]
