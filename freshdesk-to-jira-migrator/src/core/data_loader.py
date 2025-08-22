@@ -34,7 +34,7 @@ class DataLoader:
         # Load user data once
         self._user_data = None
     
-    def _load_user_data(self) -> Dict[str, Any]:
+    def load_user_details(self) -> Dict[str, Any]:
         """
         Load all user data (agents and contacts).
         
@@ -242,7 +242,7 @@ class DataLoader:
         ticket_data["conversation_attachments"] = conversation_attachments
         
         # Load user data (agents and contacts)
-        user_data = self._load_user_data()
+        user_data = self.load_user_details()
         ticket_data["user_data"] = user_data
         
         return ticket_data
@@ -282,7 +282,7 @@ class DataLoader:
             Data summary dictionary
         """
         ticket_ids = self.load_all_ticket_ids()
-        user_data = self._load_user_data()
+        user_data = self.load_user_details()
         
         summary = {
             "total_tickets": len(ticket_ids),

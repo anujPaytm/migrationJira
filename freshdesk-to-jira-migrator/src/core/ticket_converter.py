@@ -66,12 +66,12 @@ class TicketConverter:
             description_parts.append(f"**— Description —**\n{ticket['description_text']}")
         
         # Add unmapped ticket fields to description (only if not mapped to custom fields)
-        # Exclude HTML fields like 'description' - only use description_text
+        # Exclude HTML fields and description_text to avoid duplication
         if unmapped_ticket_fields:
             metadata_lines = ["**— Freshdesk Ticket Metadata —**"]
             for field_name, field_value in unmapped_ticket_fields.items():
-                # Skip HTML description field - we already added description_text above
-                if field_name in ['description', 'structured_description']:
+                # Skip HTML description fields and description_text to avoid duplication
+                if field_name in ['description', 'structured_description', 'description_text']:
                     continue
                     
                 if field_value is not None and field_value != "":

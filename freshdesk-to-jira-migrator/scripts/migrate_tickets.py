@@ -8,7 +8,10 @@ import os
 import sys
 import json
 import argparse
-from typing import List, Dict, Any, Optional
+import time
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import List, Dict, Any, Optional, Tuple
 from pathlib import Path
 
 # Load environment variables
@@ -47,19 +50,22 @@ class TicketMigrator:
     Main migration orchestrator for converting Freshdesk tickets to JIRA.
     """
     
-    def __init__(self, config: JiraConfig, data_directory: str = "../data_to_be_migrated"):
+    def __init__(self, config: JiraConfig, data_directory: str = "../data_to_be_migrated", max_workers: int = 8):
         """
         Initialize the ticket migrator.
         
         Args:
             config: JIRA configuration
             data_directory: Path to Freshdesk data directory
+            max_workers: Maximum number of parallel workers
         """
         self.config = config
-        self.jira = JIRA(
-            server=f"https://{config.domain}",
-            basic_auth=(config.email, config.api_token)
-        )
+        self.max_workers = max_workers
+        
+        # Rate limiting
+        self.rate_limit_lock = threading.Lock()
+        self.last_request_time = 0
+        self.min_request_interval = 0.1  # 100ms between requests (10 requests per second)
         
         # Initialize components
         self.data_loader = DataLoader(data_directory)
@@ -72,7 +78,8 @@ class TicketMigrator:
         })
         self.tracker = MigrationTracker()
         
-        # Migration statistics
+        # Migration statistics with thread safety
+        self.stats_lock = threading.Lock()
         self.stats = {
             'total_tickets': 0,
             'successful_migrations': 0,
@@ -80,6 +87,23 @@ class TicketMigrator:
             'total_attachments': 0,
             'successful_attachments': 0
         }
+    
+    def _rate_limit(self):
+        """Implement rate limiting for API requests."""
+        with self.rate_limit_lock:
+            current_time = time.time()
+            time_since_last = current_time - self.last_request_time
+            if time_since_last < self.min_request_interval:
+                time.sleep(self.min_request_interval - time_since_last)
+            self.last_request_time = time.time()
+    
+    def _get_jira_client(self) -> JIRA:
+        """Get a JIRA client with rate limiting."""
+        self._rate_limit()
+        return JIRA(
+            server=f"https://{self.config.domain}",
+            basic_auth=(self.config.email, self.config.api_token)
+        )
     
     def validate_setup(self) -> bool:
         """
@@ -97,7 +121,8 @@ class TicketMigrator:
         
         # Validate JIRA connection
         try:
-            myself = self.jira.myself()
+            jira = self._get_jira_client()
+            myself = jira.myself()
             print(f"✅ Connected to JIRA as: {myself.get('displayName', 'Unknown')}")
         except Exception as e:
             print(f"❌ JIRA connection failed: {e}")
@@ -105,7 +130,8 @@ class TicketMigrator:
         
         # Validate project access
         try:
-            project = self.jira.project(self.config.project_key)
+            jira = self._get_jira_client()
+            project = jira.project(self.config.project_key)
             print(f"✅ Project access confirmed: {project.name} ({project.key})")
         except Exception as e:
             print(f"❌ Project access failed: {e}")
@@ -161,8 +187,9 @@ class TicketMigrator:
                 self.tracker.update_ticket_status(ticket_id, "dry_run_completed")
                 return True
             
-            # Create JIRA issue
-            issue = self.jira.create_issue(fields=jira_issue['fields'])
+            # Create JIRA issue with rate limiting
+            jira = self._get_jira_client()
+            issue = jira.create_issue(fields=jira_issue['fields'])
             print(f"✅ Created JIRA issue: {issue.key}")
             
             # Upload attachments
@@ -171,8 +198,37 @@ class TicketMigrator:
             # Update tracker with success
             self.tracker.update_ticket_status(ticket_id, "success", jira_id=issue.key)
             
-            self.stats['successful_migrations'] += 1
+            with self.stats_lock:
+                self.stats['successful_migrations'] += 1
             return True
+            
+        except Exception as e:
+            error_msg = f"Failed to migrate ticket {ticket_id}: {str(e)}"
+            print(f"❌ {error_msg}")
+            self.tracker.update_ticket_status(ticket_id, "failed", reason=str(e))
+            with self.stats_lock:
+                self.stats['failed_migrations'] += 1
+            return False
+    
+    def _migrate_ticket_worker(self, args: Tuple[int, bool]) -> Tuple[int, bool]:
+        """
+        Worker function for parallel ticket migration.
+        
+        Args:
+            args: Tuple of (ticket_id, dry_run)
+            
+        Returns:
+            Tuple of (ticket_id, success)
+        """
+        ticket_id, dry_run = args
+        try:
+            success = self.migrate_single_ticket(ticket_id, dry_run)
+            return (ticket_id, success)
+        except Exception as e:
+            print(f"❌ Worker failed for ticket {ticket_id}: {str(e)}")
+            with self.stats_lock:
+                self.stats['failed_migrations'] += 1
+            return (ticket_id, False)
             
         except Exception as e:
             error_msg = str(e)
@@ -241,9 +297,35 @@ class TicketMigrator:
             else:
                 print("⚠️  No valid conversation attachment files found")
     
-    def migrate_tickets(self, ticket_ids: List[int], dry_run: bool = False) -> Dict[str, Any]:
+    def migrate_tickets(self, ticket_ids: List[int], dry_run: bool = False, parallel: bool = True) -> Dict[str, Any]:
         """
         Migrate multiple tickets to JIRA.
+        
+        Args:
+            ticket_ids: List of ticket IDs to migrate
+            dry_run: If True, don't actually create JIRA issues
+            parallel: If True, use parallel processing
+            
+        Returns:
+            Migration statistics
+        """
+        print(f"🚀 Starting migration of {len(ticket_ids)} tickets...")
+        print(f"Mode: {'Dry Run' if dry_run else 'Live Migration'}")
+        print(f"Processing: {'Parallel' if parallel else 'Sequential'}")
+        
+        with self.stats_lock:
+            self.stats['total_tickets'] = len(ticket_ids)
+            self.stats['successful_migrations'] = 0
+            self.stats['failed_migrations'] = 0
+        
+        if parallel and len(ticket_ids) > 1:
+            return self._migrate_tickets_parallel(ticket_ids, dry_run)
+        else:
+            return self._migrate_tickets_sequential(ticket_ids, dry_run)
+    
+    def _migrate_tickets_parallel(self, ticket_ids: List[int], dry_run: bool = False) -> Dict[str, Any]:
+        """
+        Migrate tickets using parallel processing.
         
         Args:
             ticket_ids: List of ticket IDs to migrate
@@ -252,11 +334,41 @@ class TicketMigrator:
         Returns:
             Migration statistics
         """
-        print(f"🚀 Starting migration of {len(ticket_ids)} tickets...")
-        print(f"Mode: {'Dry Run' if dry_run else 'Live Migration'}")
+        print(f"🔄 Using {self.max_workers} parallel workers...")
         
-        self.stats['total_tickets'] = len(ticket_ids)
+        # Prepare arguments for workers
+        worker_args = [(ticket_id, dry_run) for ticket_id in ticket_ids]
         
+        # Track progress
+        completed = 0
+        total = len(ticket_ids)
+        
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            # Submit all tasks
+            future_to_ticket = {
+                executor.submit(self._migrate_ticket_worker, args): args[0] 
+                for args in worker_args
+            }
+            
+            # Process completed tasks
+            for future in as_completed(future_to_ticket):
+                ticket_id, success = future.result()
+                completed += 1
+                print(f"📋 Progress: {completed}/{total} (Ticket {ticket_id}: {'✅' if success else '❌'})")
+        
+        return self._get_migration_summary()
+    
+    def _migrate_tickets_sequential(self, ticket_ids: List[int], dry_run: bool = False) -> Dict[str, Any]:
+        """
+        Migrate tickets sequentially.
+        
+        Args:
+            ticket_ids: List of ticket IDs to migrate
+            dry_run: If True, don't actually create JIRA issues
+            
+        Returns:
+            Migration statistics
+        """
         for i, ticket_id in enumerate(ticket_ids, 1):
             print(f"\n📋 Progress: {i}/{len(ticket_ids)}")
             self.migrate_single_ticket(ticket_id, dry_run)
@@ -293,6 +405,8 @@ def main():
     parser.add_argument('--dry-run', action='store_true', help='Perform a dry run without creating JIRA issues')
     parser.add_argument('--data-dir', default='../data_to_be_migrated', help='Path to Freshdesk data directory')
     parser.add_argument('--limit', type=int, help='Limit number of tickets to migrate')
+    parser.add_argument('--workers', type=int, default=8, help='Number of parallel workers (default: 8)')
+    parser.add_argument('--sequential', action='store_true', help='Use sequential processing instead of parallel')
     
     args = parser.parse_args()
     
@@ -301,7 +415,7 @@ def main():
         config = JiraConfig()
         
         # Initialize migrator
-        migrator = TicketMigrator(config, args.data_dir)
+        migrator = TicketMigrator(config, args.data_dir, max_workers=args.workers)
         
         # Validate setup
         if not migrator.validate_setup():
@@ -312,7 +426,7 @@ def main():
         if args.ticket_ids:
             ticket_ids = args.ticket_ids
         elif args.all:
-            ticket_ids = migrator.data_loader.load_all_ticket_ids()
+            ticket_ids = migrator.data_loader.get_all_ticket_ids()
         else:
             print("❌ Please specify --ticket-ids or --all")
             sys.exit(1)
@@ -326,7 +440,7 @@ def main():
             sys.exit(1)
         
         # Perform migration
-        summary = migrator.migrate_tickets(ticket_ids, args.dry_run)
+        summary = migrator.migrate_tickets(ticket_ids, args.dry_run, parallel=not args.sequential)
         
         # Print summary
         print(f"\n📊 Migration Summary:")
