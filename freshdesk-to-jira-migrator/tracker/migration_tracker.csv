@@ -11,4 +11,5 @@ ticket_id,jira_status,jira_id,reason,created_at,updated_at
 	response text = {""errorMessages"":[],""errors"":{""description"":""The entered text is too long. It exceeds the allowed limit of 32,767 characters.""}}",2025-08-22T15:45:17.425099,2025-08-22T15:45:18.581737
 59,success,FTJM-57,,2025-08-22T15:45:18.583784,2025-08-22T15:45:20.591879
 60,success,FTJM-58,,2025-08-22T16:00:57.681849,2025-08-22T16:00:59.783192
-9988,success,FTJM-59,,2025-08-22T16:05:23.226438,2025-08-22T16:05:25.606890
+9988,success,FTJM-60,,2025-08-22T16:05:23.226438,2025-08-22T16:46:26.679741
+10022,dry_run_completed,,,2025-08-22T17:02:15.979310,2025-08-22T17:02:15.982613

@@ -307,11 +307,28 @@ class FieldMapper:
                 # Format all data as a single field value using colon-separated format
                 if data_type == "conversation_fields":
                     formatted_data = self._format_conversations_for_parent(data, user_data)
+                    # Handle conversation overflow into multiple fields
+                    overflow_fields = parent_mapping.get("overflow_fields", [])
+                    max_length = parent_mapping.get("max_length", 32000)
+                    
+                    if len(formatted_data) > max_length and overflow_fields:
+                        # Split conversation data across multiple fields
+                        conversation_chunks = self._split_conversation_data(formatted_data, max_length, len(overflow_fields))
+                        
+                        # Assign chunks to fields
+                        mapped_fields[jira_field] = conversation_chunks[0] if conversation_chunks else ""
+                        
+                        for i, overflow_field in enumerate(overflow_fields):
+                            if i + 1 < len(conversation_chunks):
+                                mapped_fields[overflow_field] = conversation_chunks[i + 1]
+                    else:
+                        mapped_fields[jira_field] = formatted_data
+                        
                 elif data_type == "attachment_fields":
                     formatted_data = self._format_attachments_for_parent(data, user_data)
                 else:
                     formatted_data = self._format_data_for_parent_field(data, data_type)
-                mapped_fields[jira_field] = formatted_data
+                    mapped_fields[jira_field] = formatted_data
                 return mapped_fields, unmapped_fields
         else:
             # Parent field doesn't exist - check individual fields
@@ -490,3 +507,82 @@ class FieldMapper:
             lines.append(':'.join(values))
         
         return '\n'.join(lines)
+    
+    def _split_conversation_data(self, conversation_data: str, max_length: int, num_overflow_fields: int) -> List[str]:
+        """
+        Split conversation data into chunks that fit within the character limit.
+        
+        Args:
+            conversation_data: Full conversation data string
+            max_length: Maximum length per field
+            num_overflow_fields: Number of overflow fields available
+            
+        Returns:
+            List of conversation chunks
+        """
+        if len(conversation_data) <= max_length:
+            return [conversation_data]
+        
+        chunks = []
+        remaining_data = conversation_data
+        total_fields = 1 + num_overflow_fields  # Original field + overflow fields
+        
+        for i in range(total_fields):
+            if not remaining_data:
+                break
+                
+            if i == 0:
+                # First chunk - include header
+                if len(remaining_data) <= max_length:
+                    chunks.append(remaining_data)
+                    break
+                else:
+                    # Find a good break point (end of a conversation)
+                    break_point = self._find_conversation_break_point(remaining_data, max_length)
+                    chunks.append(remaining_data[:break_point])
+                    remaining_data = remaining_data[break_point:]
+            else:
+                # Overflow chunks - add continuation header
+                continuation_header = f"**— Conversation Details (Continued {i}) —**\n"
+                available_length = max_length - len(continuation_header)
+                
+                if len(remaining_data) <= available_length:
+                    chunks.append(continuation_header + remaining_data)
+                    break
+                else:
+                    # Find a good break point
+                    break_point = self._find_conversation_break_point(remaining_data, available_length)
+                    chunks.append(continuation_header + remaining_data[:break_point])
+                    remaining_data = remaining_data[break_point:]
+        
+        return chunks
+    
+    def _find_conversation_break_point(self, data: str, max_length: int) -> int:
+        """
+        Find a good break point in conversation data that doesn't cut in the middle of a conversation.
+        
+        Args:
+            data: Conversation data string
+            max_length: Maximum length for this chunk
+            
+        Returns:
+            Index to break at
+        """
+        if len(data) <= max_length:
+            return len(data)
+        
+        # Look for conversation separators
+        separators = ["---", "\n\n---\n\n"]
+        
+        for separator in separators:
+            # Find the last occurrence of the separator before max_length
+            last_separator_pos = data.rfind(separator, 0, max_length)
+            if last_separator_pos > 0:
+                return last_separator_pos + len(separator)
+        
+        # If no good separator found, break at max_length but try to break at a newline
+        break_point = data.rfind('\n', 0, max_length)
+        if break_point > max_length * 0.8:  # Only use newline if it's not too far from max_length
+            return break_point + 1
+        
+        return max_length

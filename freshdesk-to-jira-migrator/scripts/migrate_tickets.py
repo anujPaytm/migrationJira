@@ -23,6 +23,11 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 sys.path.insert(0, str(project_root / "src"))
 
+# Ensure the src directory is treated as a Python package
+src_path = project_root / "src"
+if not (src_path / "__init__.py").exists():
+    (src_path / "__init__.py").touch()
+
 from jira import JIRA
 from core.data_loader import DataLoader
 from core.field_mapper import FieldMapper

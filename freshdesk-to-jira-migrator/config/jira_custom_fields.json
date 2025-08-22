@@ -198,6 +198,18 @@
       "type": "string",
       "description": "Freshdesk conversation details"
     },
+    "FD_Conversation_Details2": {
+      "id": "customfield_10355",
+      "name": "FD_Conversation_Details2",
+      "type": "string",
+      "description": "Freshdesk conversation details (overflow field 1)"
+    },
+    "FD_Conversation_Details3": {
+      "id": "customfield_10356",
+      "name": "FD_Conversation_Details3",
+      "type": "string",
+      "description": "Freshdesk conversation details (overflow field 2)"
+    },
     "FD_Attachment_Details": {
       "id": "customfield_10353",
       "name": "FD_Attachment_Details",

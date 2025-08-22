@@ -10,7 +10,9 @@
       "jira_field": "customfield_10352",
       "field_type": "custom",
       "mapper_function": null,
-      "description": "All conversation data"
+      "description": "All conversation data",
+      "overflow_fields": ["customfield_10355", "customfield_10356"],
+      "max_length": 32000
     },
     "attachment_fields": {
       "jira_field": "customfield_10353",
