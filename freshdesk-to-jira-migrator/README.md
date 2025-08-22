@@ -62,10 +62,55 @@ freshdesk-to-jira-migrator/
 Create a `.env` file with the following variables:
 
 ```bash
+# JIRA Configuration
 JIRA_DOMAIN=your-domain.atlassian.net
 JIRA_EMAIL=your-email@company.com
 JIRA_API_TOKEN=your_jira_api_token_here
 JIRA_PROJECT_KEY=FTJM
+
+# Migration Configuration
+DATA_DIRECTORY=../data_to_be_migrated
+MIGRATE_ALL=false
+TICKET_IDS="55,1001,1004"
+DRY_RUN=true
+MIGRATION_LIMIT=0
+PARALLEL_WORKERS=8
+SEQUENTIAL_MODE=false
+LOG_FILE=""
+JIRA_ISSUE_TYPE="Task"
+```
+
+### Configuration Options
+
+| Variable | Description | Default | Example |
+|----------|-------------|---------|---------|
+| `MIGRATE_ALL` | Migrate all available tickets | `false` | `true` |
+| `TICKET_IDS` | Comma-separated list of specific ticket IDs | `""` | `"55,1001,1004"` |
+| `DRY_RUN` | Perform dry run without creating JIRA issues | `false` | `true` |
+| `MIGRATION_LIMIT` | Maximum tickets to migrate (0 = no limit) | `0` | `100` |
+| `PARALLEL_WORKERS` | Number of parallel workers | `8` | `4` |
+| `SEQUENTIAL_MODE` | Use sequential processing | `false` | `true` |
+| `LOG_FILE` | Path to log file (empty = console only) | `""` | `"migration.log"` |
+| `DATA_DIRECTORY` | Path to Freshdesk data directory | `../data_to_be_migrated` | `./my_data` |
+
+### Usage Modes
+
+**1. Environment-Based Configuration (Recommended)**
+```bash
+# Configure .env file and run without arguments
+python3 scripts/migrate_tickets.py
+```
+
+**2. Command-Line Arguments (Backward Compatible)**
+```bash
+# Specific tickets with dry run
+python3 scripts/migrate_tickets.py --ticket-ids 55 1001 1004 --dry-run
+
+# Migrate all tickets
+python3 scripts/migrate_tickets.py --all --limit 100
+
+# Sequential processing
+python3 scripts/migrate_tickets.py --ticket-ids 55 --sequential
 ```
 
 ### Field Mapping
@@ -265,3 +310,5 @@ For issues and questions:
 2. Review the configuration examples
 3. Run the test setup script
 4. Create an issue with detailed error information
+
+

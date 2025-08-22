@@ -16,7 +16,7 @@ from config.mapper_functions import apply_mapper_function, clean_html
 
 class FieldMapper:
     """
-    Handles field mapping between Freshdesk and JIRA.
+    Handles field mapping between Freshdesk and JIRA using configuration files.
     """
     
     def __init__(self, mapping_file_path: str = "config/field_mapping.json"):
@@ -28,6 +28,7 @@ class FieldMapper:
         """
         self.mapping_file_path = mapping_file_path
         self.field_mapping = self._load_field_mapping()
+        self._overflow_tracker = 0  # Track which additional_info field to use next
     
     def _load_field_mapping(self) -> Dict[str, Any]:
         """
@@ -307,28 +308,23 @@ class FieldMapper:
                 # Format all data as a single field value using colon-separated format
                 if data_type == "conversation_fields":
                     formatted_data = self._format_conversations_for_parent(data, user_data)
-                    # Handle conversation overflow into multiple fields
-                    overflow_fields = parent_mapping.get("overflow_fields", [])
-                    max_length = parent_mapping.get("max_length", 32000)
-                    
-                    if len(formatted_data) > max_length and overflow_fields:
-                        # Split conversation data across multiple fields
-                        conversation_chunks = self._split_conversation_data(formatted_data, max_length, len(overflow_fields))
-                        
-                        # Assign chunks to fields
-                        mapped_fields[jira_field] = conversation_chunks[0] if conversation_chunks else ""
-                        
-                        for i, overflow_field in enumerate(overflow_fields):
-                            if i + 1 < len(conversation_chunks):
-                                mapped_fields[overflow_field] = conversation_chunks[i + 1]
-                    else:
-                        mapped_fields[jira_field] = formatted_data
+                    # Handle overflow using generic method
+                    overflow_mappings = self._handle_data_overflow(formatted_data, data_type, parent_mapping, jira_field)
+                    mapped_fields.update(overflow_mappings)
                         
                 elif data_type == "attachment_fields":
                     formatted_data = self._format_attachments_for_parent(data, user_data)
+                    # Handle overflow using generic method
+                    overflow_mappings = self._handle_data_overflow(formatted_data, data_type, parent_mapping, jira_field)
+                    mapped_fields.update(overflow_mappings)
                 else:
                     formatted_data = self._format_data_for_parent_field(data, data_type)
-                    mapped_fields[jira_field] = formatted_data
+                    # Handle overflow for other field types if configured
+                    if parent_mapping.get("overflow_fields") or parent_mapping.get("additional_overflow_fields"):
+                        overflow_mappings = self._handle_data_overflow(formatted_data, data_type, parent_mapping, jira_field)
+                        mapped_fields.update(overflow_mappings)
+                    else:
+                        mapped_fields[jira_field] = formatted_data
                 return mapped_fields, unmapped_fields
         else:
             # Parent field doesn't exist - check individual fields
@@ -406,6 +402,11 @@ class FieldMapper:
         if not data:
             return ""
         
+        # Ensure data is a list
+        if not isinstance(data, list):
+            print(f"Warning: Expected list for conversations, got {type(data)}")
+            return ""
+        
         headers = ["created_at", "updated_at", "conversation_id", "user_id", "private", "to_email", "from_email", "cc_email", "bcc_email"]
         lines = ["**— Conversations —**", ':'.join(headers)]
         
@@ -468,7 +469,12 @@ class FieldMapper:
         if not data:
             return ""
         
-        headers = ["created_at", "updated_at", "attachment_id", "newNamed file name", "size", "user_id", "conversation_id"]
+        # Ensure data is a list
+        if not isinstance(data, list):
+            print(f"Warning: Expected list for attachments, got {type(data)}")
+            return ""
+        
+        headers = ["created_at", "updated_at", "attachment_id", "file name", "size", "user_id", "conversation_id"]
         lines = ["**— Attachment Details —**", ':'.join(headers)]
         
         for attachment in data:
@@ -586,3 +592,316 @@ class FieldMapper:
             return break_point + 1
         
         return max_length
+    
+    def _split_attachment_data(self, attachment_data: str, max_length: int, num_overflow_fields: int) -> List[str]:
+        """
+        Split attachment data into chunks that fit within the character limit.
+        
+        Args:
+            attachment_data: Full attachment data string
+            max_length: Maximum length per field
+            num_overflow_fields: Number of overflow fields available
+            
+        Returns:
+            List of attachment chunks
+        """
+        if len(attachment_data) <= max_length:
+            return [attachment_data]
+        
+        chunks = []
+        remaining_data = attachment_data
+        total_fields = 1 + num_overflow_fields  # Original field + overflow fields
+        
+        for i in range(total_fields):
+            if not remaining_data:
+                break
+                
+            if i == 0:
+                # First chunk - include header
+                if len(remaining_data) <= max_length:
+                    chunks.append(remaining_data)
+                    break
+                else:
+                    # Find a good break point (end of an attachment)
+                    break_point = self._find_attachment_break_point(remaining_data, max_length)
+                    chunks.append(remaining_data[:break_point])
+                    remaining_data = remaining_data[break_point:]
+            else:
+                # Overflow chunks - add continuation header
+                continuation_header = f"**— Attachment Details (Continued {i}) —**\n"
+                available_length = max_length - len(continuation_header)
+                
+                if len(remaining_data) <= available_length:
+                    chunks.append(continuation_header + remaining_data)
+                    break
+                else:
+                    # Find a good break point
+                    break_point = self._find_attachment_break_point(remaining_data, available_length)
+                    chunks.append(continuation_header + remaining_data[:break_point])
+                    remaining_data = remaining_data[break_point:]
+        
+        return chunks
+    
+    def _find_attachment_break_point(self, data: str, max_length: int) -> int:
+        """
+        Find a good break point in attachment data that doesn't cut in the middle of an attachment.
+        
+        Args:
+            data: Attachment data string
+            max_length: Maximum length for this chunk
+            
+        Returns:
+            Index to break at
+        """
+        if len(data) <= max_length:
+            return len(data)
+        
+        # Look for attachment separators (newlines between attachments)
+        # Find the last occurrence of double newline before max_length
+        last_separator_pos = data.rfind('\n\n', 0, max_length)
+        if last_separator_pos > 0:
+            return last_separator_pos + 2
+        
+        # If no good separator found, break at max_length but try to break at a newline
+        break_point = data.rfind('\n', 0, max_length)
+        if break_point > max_length * 0.8:  # Only use newline if it's not too far from max_length
+            return break_point + 1
+        
+        return max_length
+    
+    def _handle_data_overflow(self, data: str, data_type: str, parent_mapping: dict, jira_field: str) -> Dict[str, str]:
+        """
+        Generic method to handle data overflow for any field type with sequential overflow logic.
+        
+        Args:
+            data: Formatted data string
+            data_type: Type of data (conversation_fields, attachment_fields, etc.)
+            parent_mapping: Parent field mapping configuration
+            jira_field: Main Jira field name
+            
+        Returns:
+            Dictionary of field mappings
+        """
+        mapped_fields = {}
+        overflow_fields = parent_mapping.get("overflow_fields", [])
+        additional_overflow_fields = parent_mapping.get("additional_overflow_fields", [])
+        max_length = parent_mapping.get("max_length", 32000)
+        
+        if len(data) <= max_length:
+            mapped_fields[jira_field] = data
+            return mapped_fields
+        
+        # Sequential overflow logic:
+        # 1. Use reserved overflow fields first (if any)
+        # 2. Then use additional_info fields sequentially
+        
+        if data_type == "conversation_fields":
+            return self._handle_conversation_overflow(data, overflow_fields, max_length, jira_field)
+        elif data_type == "attachment_fields":
+            return self._handle_attachment_overflow(data, overflow_fields, max_length, jira_field)
+        else:
+            # Generic overflow for other types
+            all_overflow_fields = overflow_fields + additional_overflow_fields
+            if not all_overflow_fields:
+                mapped_fields[jira_field] = data
+                return mapped_fields
+            
+            # Split data based on type
+            if data_type == "conversation_fields":
+                chunks = self._split_conversation_data(data, max_length, len(all_overflow_fields))
+            else:
+                # Generic splitting for other data types
+                chunks = self._split_generic_data(data, max_length, len(all_overflow_fields), data_type)
+            
+            # Assign chunks to fields
+            mapped_fields[jira_field] = chunks[0] if chunks else ""
+            
+            for i, overflow_field in enumerate(all_overflow_fields):
+                if i + 1 < len(chunks):
+                    mapped_fields[overflow_field] = chunks[i + 1]
+            
+            return mapped_fields
+    
+    def _handle_conversation_overflow(self, data: str, overflow_fields: List[str], max_length: int, jira_field: str) -> Dict[str, str]:
+        """
+        Handle conversation overflow with dedicated overflow field and smart additional field usage.
+        
+        Args:
+            data: Formatted conversation data string
+            overflow_fields: Dedicated overflow fields for conversations (FD_conversation2, FD_conversation3)
+            max_length: Maximum length per field
+            jira_field: Main Jira field name
+            
+        Returns:
+            Dictionary of field mappings
+        """
+        mapped_fields = {}
+        
+        # First, try to fit data in main field and dedicated overflow fields
+        dedicated_overflow_fields = overflow_fields  # FD_conversation2, FD_conversation3
+        
+        # Calculate total fields needed
+        total_dedicated_fields = 1 + len(dedicated_overflow_fields)  # main + dedicated overflow
+        
+        # Split data for dedicated fields first
+        chunks = self._split_conversation_data(data, max_length, len(dedicated_overflow_fields))
+        
+        # Assign to main field and dedicated overflow fields
+        mapped_fields[jira_field] = chunks[0] if chunks else ""
+        
+        for i, overflow_field in enumerate(dedicated_overflow_fields):
+            if i + 1 < len(chunks):
+                mapped_fields[overflow_field] = chunks[i + 1]
+        
+        # If we still have data to overflow, use additional fields sequentially
+        if len(chunks) > total_dedicated_fields:
+            remaining_chunks = chunks[total_dedicated_fields:]
+            
+            for chunk in remaining_chunks:
+                next_field = self._get_next_additional_info_field()
+                if next_field:
+                    mapped_fields[next_field] = chunk
+                else:
+                    # No more additional_info fields available
+                    break
+        
+        return mapped_fields
+    
+    def _handle_attachment_overflow(self, data: str, overflow_fields: List[str], max_length: int, jira_field: str) -> Dict[str, str]:
+        """
+        Handle attachment overflow with dedicated overflow field and smart additional field usage.
+        
+        Args:
+            data: Formatted attachment data string
+            overflow_fields: Dedicated overflow fields for attachments (FD_attachment_details2)
+            max_length: Maximum length per field
+            jira_field: Main Jira field name
+            
+        Returns:
+            Dictionary of field mappings
+        """
+        mapped_fields = {}
+        
+        # First, try to fit data in main field and dedicated overflow fields
+        dedicated_overflow_fields = overflow_fields  # FD_attachment_details2
+        
+        # Calculate total fields needed
+        total_dedicated_fields = 1 + len(dedicated_overflow_fields)  # main + dedicated overflow
+        
+        # Split data for dedicated fields first
+        chunks = self._split_attachment_data(data, max_length, len(dedicated_overflow_fields))
+        
+        # Assign to main field and dedicated overflow fields
+        mapped_fields[jira_field] = chunks[0] if chunks else ""
+        
+        for i, overflow_field in enumerate(dedicated_overflow_fields):
+            if i + 1 < len(chunks):
+                mapped_fields[overflow_field] = chunks[i + 1]
+        
+        # If we still have data to overflow, use additional fields sequentially
+        if len(chunks) > total_dedicated_fields:
+            remaining_chunks = chunks[total_dedicated_fields:]
+            
+            for chunk in remaining_chunks:
+                next_field = self._get_next_additional_info_field()
+                if next_field:
+                    mapped_fields[next_field] = chunk
+                else:
+                    # No more additional_info fields available
+                    break
+        
+        return mapped_fields
+    
+    def _split_generic_data(self, data: str, max_length: int, num_overflow_fields: int, data_type: str) -> List[str]:
+        """
+        Generic method to split any type of data into chunks.
+        
+        Args:
+            data: Data string to split
+            max_length: Maximum length per field
+            num_overflow_fields: Number of overflow fields available
+            data_type: Type of data for header formatting
+            
+        Returns:
+            List of data chunks
+        """
+        if len(data) <= max_length:
+            return [data]
+        
+        chunks = []
+        remaining_data = data
+        total_fields = 1 + num_overflow_fields
+        
+        for i in range(total_fields):
+            if not remaining_data:
+                break
+                
+            if i == 0:
+                # First chunk - include header
+                if len(remaining_data) <= max_length:
+                    chunks.append(remaining_data)
+                    break
+                else:
+                    # Find a good break point
+                    break_point = self._find_generic_break_point(remaining_data, max_length)
+                    chunks.append(remaining_data[:break_point])
+                    remaining_data = remaining_data[break_point:]
+            else:
+                # Overflow chunks - add continuation header
+                data_type_name = data_type.replace('_', ' ').title()
+                continuation_header = f"**— {data_type_name} (Continued {i}) —**\n"
+                available_length = max_length - len(continuation_header)
+                
+                if len(remaining_data) <= available_length:
+                    chunks.append(continuation_header + remaining_data)
+                    break
+                else:
+                    # Find a good break point
+                    break_point = self._find_generic_break_point(remaining_data, available_length)
+                    chunks.append(continuation_header + remaining_data[:break_point])
+                    remaining_data = remaining_data[break_point:]
+        
+        return chunks
+    
+    def _find_generic_break_point(self, data: str, max_length: int) -> int:
+        """
+        Find a good break point in generic data.
+        
+        Args:
+            data: Data string
+            max_length: Maximum length for this chunk
+            
+        Returns:
+            Index to break at
+        """
+        if len(data) <= max_length:
+            return len(data)
+        
+        # Look for common separators
+        separators = ["\n\n", "\n", " ", ""]
+        
+        for separator in separators:
+            if separator:
+                last_separator_pos = data.rfind(separator, 0, max_length)
+                if last_separator_pos > 0:
+                    return last_separator_pos + len(separator)
+            else:
+                # If no separator found, break at max_length
+                return max_length
+        
+        return max_length
+    
+    def _get_next_additional_info_field(self) -> Optional[str]:
+        """
+        Get the next available additional_info field for overflow data.
+        
+        Returns:
+            Next available additional_info field ID or None if all are used
+        """
+        if self._overflow_tracker >= 10:
+            return None
+        
+        # The correct field IDs are customfield_10357 through customfield_10366
+        field_id = f"customfield_{10357 + self._overflow_tracker}"
+        self._overflow_tracker += 1
+        return field_id

@@ -87,16 +87,15 @@ class TicketConverter:
         if conversations:
             conv_mapped_fields, conv_unmapped_fields = self.field_mapper.map_hierarchical_fields(conversations, "conversation_fields", user_data)
             
-            # Format conversations in colon-separated format (regardless of where they're stored)
-            formatted_conversations = self._format_conversations_colon_separated(conversations, user_data)
-            
             # Add mapped conversation fields to JIRA issue
             for field_name, field_value in conv_mapped_fields.items():
                 jira_issue["fields"][field_name] = field_value
             
-            # Add unmapped conversations to description
-            if conv_unmapped_fields and formatted_conversations:
-                description_parts.append(formatted_conversations)
+            # Add unmapped conversations to description (only if parent field is not mapped)
+            if conv_unmapped_fields and not conv_mapped_fields:
+                formatted_conversations = self._format_conversations_colon_separated(conversations, user_data)
+                if formatted_conversations:
+                    description_parts.append(formatted_conversations)
         
         # Map attachments using hierarchical approach
         all_attachments = ticket_attachments + conversation_attachments if ticket_attachments and conversation_attachments else (ticket_attachments or conversation_attachments or [])
@@ -104,46 +103,38 @@ class TicketConverter:
         if all_attachments:
             att_mapped_fields, att_unmapped_fields = self.field_mapper.map_hierarchical_fields(all_attachments, "attachment_fields", user_data)
             
-            # Format attachments in colon-separated format (regardless of where they're stored)
-            formatted_attachments = self._format_attachments_colon_separated(all_attachments, user_data)
-            
             # Add mapped attachment fields to JIRA issue
             for field_name, field_value in att_mapped_fields.items():
                 jira_issue["fields"][field_name] = field_value
             
-            # Add unmapped attachments to description
-            if att_unmapped_fields and formatted_attachments:
-                description_parts.append(formatted_attachments)
+            # Add unmapped attachments to description (only if parent field is not mapped)
+            if att_unmapped_fields and not att_mapped_fields:
+                formatted_attachments = self._format_attachments_colon_separated(all_attachments, user_data)
+                if formatted_attachments:
+                    description_parts.append(formatted_attachments)
         
-        # Combine all description parts
+        # Combine all description parts with overflow handling
         if description_parts:
-            full_description = '\n\n'.join(description_parts)
-            
-            # Truncate description if it exceeds JIRA's 32,767 character limit
+            # Check total length before joining to avoid expensive operations
+            total_length = sum(len(part) for part in description_parts) + (len(description_parts) - 1) * 2  # Account for '\n\n' separators
             max_description_length = 32000  # Leave some buffer
-            if len(full_description) > max_description_length:
-                print(f"Warning: Description too long ({len(full_description)} chars), truncating to {max_description_length} chars")
-                
-                # Keep metadata and truncate conversations
-                if len(description_parts) > 1:
-                    truncated_description = description_parts[0] + "\n\n"  # Keep first part (metadata)
-                    remaining_length = max_description_length - len(truncated_description) - 100
-                    
-                    # Add truncated conversations if any
-                    if len(description_parts) > 1:
-                        for part in description_parts[1:]:
-                            if len(truncated_description) + len(part) < remaining_length:
-                                truncated_description += part + "\n\n"
-                            else:
-                                truncated_description += part[:remaining_length - len(truncated_description)]
-                                truncated_description += "\n\n[TRUNCATED - Description too long for JIRA]"
-                                break
-                    
-                    full_description = truncated_description
-                else:
-                    full_description = truncate_text(full_description, max_description_length)
             
-            jira_issue["fields"]["description"] = full_description
+            if total_length > max_description_length:
+                print(f"Warning: Description too long ({total_length} chars), using overflow fields")
+                
+                # Use overflow fields instead of truncating
+                full_description = '\n\n'.join(description_parts)
+                overflow_mappings = self._handle_description_overflow(full_description, max_description_length)
+                
+                # Add overflow fields to the JIRA issue
+                for field_name, field_value in overflow_mappings.items():
+                    jira_issue["fields"][field_name] = field_value
+                
+                # Set the main description to the first chunk
+                jira_issue["fields"]["description"] = overflow_mappings.get("description", "")
+            else:
+                full_description = '\n\n'.join(description_parts)
+                jira_issue["fields"]["description"] = full_description
         
         # Don't add user information to avoid description length issues
         # User mapping is already handled in the field mapping above
@@ -430,3 +421,118 @@ class TicketConverter:
             attachment_lines.append(':'.join(values))
         
         return '\n'.join(attachment_lines)
+    
+    def _handle_description_overflow(self, full_description: str, max_length: int) -> Dict[str, str]:
+        """
+        Handle description overflow using additional_info fields sequentially.
+        
+        Args:
+            full_description: The complete description text
+            max_length: Maximum length per field
+            
+        Returns:
+            Dictionary mapping field names to description chunks
+        """
+        overflow_mappings = {}
+        
+        if len(full_description) <= max_length:
+            overflow_mappings["description"] = full_description
+            return overflow_mappings
+        
+        # Split description into chunks
+        chunks = self._split_description_data(full_description, max_length, 10)  # 10 additional fields available
+        
+        # Assign chunks to fields
+        overflow_mappings["description"] = chunks[0] if chunks else ""
+        
+        # Use additional_info fields sequentially through the field mapper
+        for chunk in chunks[1:]:
+            next_field = self.field_mapper._get_next_additional_info_field()
+            if next_field:
+                overflow_mappings[next_field] = chunk
+            else:
+                # No more additional_info fields available
+                break
+        
+        return overflow_mappings
+    
+    def _split_description_data(self, data: str, max_length: int, num_overflow_fields: int) -> List[str]:
+        """
+        Split description data into chunks for overflow fields.
+        
+        Args:
+            data: Description data string
+            max_length: Maximum length per field
+            num_overflow_fields: Number of overflow fields available
+            
+        Returns:
+            List of description chunks
+        """
+        if len(data) <= max_length:
+            return [data]
+        
+        chunks = []
+        remaining_data = data
+        total_fields = 1 + num_overflow_fields  # Original field + overflow fields
+        
+        for i in range(total_fields):
+            if not remaining_data:
+                break
+                
+            if i == 0:
+                # First chunk - include header
+                if len(remaining_data) <= max_length:
+                    chunks.append(remaining_data)
+                    break
+                else:
+                    # Find a good break point (end of a section)
+                    break_point = self._find_description_break_point(remaining_data, max_length)
+                    chunks.append(remaining_data[:break_point])
+                    remaining_data = remaining_data[break_point:]
+            else:
+                # Overflow chunks - add continuation header
+                continuation_header = f"**— Description (Continued {i}) —**\n"
+                available_length = max_length - len(continuation_header)
+                
+                if len(remaining_data) <= available_length:
+                    chunks.append(continuation_header + remaining_data)
+                    break
+                else:
+                    # Find a good break point
+                    break_point = self._find_description_break_point(remaining_data, available_length)
+                    chunks.append(continuation_header + remaining_data[:break_point])
+                    remaining_data = remaining_data[break_point:]
+        
+        return chunks
+    
+    def _find_description_break_point(self, data: str, max_length: int) -> int:
+        """
+        Find a good break point in description data that doesn't cut in the middle of a section.
+        
+        Args:
+            data: Description data string
+            max_length: Maximum length for this chunk
+            
+        Returns:
+            Index to break at
+        """
+        if len(data) <= max_length:
+            return len(data)
+        
+        # Look for section separators (double newlines or bold headers)
+        # Find the last occurrence of double newline before max_length
+        last_separator_pos = data.rfind('\n\n', 0, max_length)
+        if last_separator_pos > 0:
+            return last_separator_pos + 2
+        
+        # Look for bold headers (markdown format)
+        last_bold_pos = data.rfind('**', 0, max_length)
+        if last_bold_pos > max_length * 0.8:  # Only use if it's not too far from max_length
+            return last_bold_pos
+        
+        # If no good separator found, break at max_length but try to break at a newline
+        break_point = data.rfind('\n', 0, max_length)
+        if break_point > max_length * 0.8:  # Only use newline if it's not too far from max_length
+            return break_point + 1
+        
+        return max_length

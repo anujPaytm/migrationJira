@@ -210,11 +210,89 @@
       "type": "string",
       "description": "Freshdesk conversation details (overflow field 2)"
     },
+    "FD_Conversation_Details4": {
+      "id": "customfield_10367",
+      "name": "FD_Conversation_Details4",
+      "type": "string",
+      "description": "Freshdesk conversation details (overflow field 3)"
+    },
+    "FD_Conversation_Details5": {
+      "id": "customfield_10368",
+      "name": "FD_Conversation_Details5",
+      "type": "string",
+      "description": "Freshdesk conversation details (overflow field 4)"
+    },
+    "FD_Additional_Info1": {
+      "id": "customfield_10357",
+      "name": "FD_Additional_Info1",
+      "type": "string",
+      "description": "Freshdesk additional overflow field 1 (flexible)"
+    },
+    "FD_Additional_Info2": {
+      "id": "customfield_10358",
+      "name": "FD_Additional_Info2",
+      "type": "string",
+      "description": "Freshdesk additional overflow field 2 (flexible)"
+    },
+    "FD_Additional_Info3": {
+      "id": "customfield_10359",
+      "name": "FD_Additional_Info3",
+      "type": "string",
+      "description": "Freshdesk additional overflow field 3 (flexible)"
+    },
+    "FD_Additional_Info4": {
+      "id": "customfield_10360",
+      "name": "FD_Additional_Info4",
+      "type": "string",
+      "description": "Freshdesk additional overflow field 4 (flexible)"
+    },
+    "FD_Additional_Info5": {
+      "id": "customfield_10361",
+      "name": "FD_Additional_Info5",
+      "type": "string",
+      "description": "Freshdesk additional overflow field 5 (flexible)"
+    },
+    "FD_Additional_Info6": {
+      "id": "customfield_10362",
+      "name": "FD_Additional_Info6",
+      "type": "string",
+      "description": "Freshdesk additional overflow field 6 (flexible)"
+    },
+    "FD_Additional_Info7": {
+      "id": "customfield_10363",
+      "name": "FD_Additional_Info7",
+      "type": "string",
+      "description": "Freshdesk additional overflow field 7 (flexible)"
+    },
+    "FD_Additional_Info8": {
+      "id": "customfield_10364",
+      "name": "FD_Additional_Info8",
+      "type": "string",
+      "description": "Freshdesk additional overflow field 8 (flexible)"
+    },
+    "FD_Additional_Info9": {
+      "id": "customfield_10365",
+      "name": "FD_Additional_Info9",
+      "type": "string",
+      "description": "Freshdesk additional overflow field 9 (flexible)"
+    },
+    "FD_Additional_Info10": {
+      "id": "customfield_10366",
+      "name": "FD_Additional_Info10",
+      "type": "string",
+      "description": "Freshdesk additional overflow field 10 (flexible)"
+    },
     "FD_Attachment_Details": {
       "id": "customfield_10353",
       "name": "FD_Attachment_Details",
       "type": "string",
       "description": "Freshdesk attachment details"
+    },
+    "FD_Attachment_Details2": {
+      "id": "customfield_10369",
+      "name": "FD_Attachment_Details2",
+      "type": "string",
+      "description": "Freshdesk attachment details (overflow field)"
     },
     "FD_Custom_Fields": {
       "id": "customfield_10354",

@@ -4,6 +4,7 @@ Migration tracker utility for managing CSV-based migration status.
 
 import csv
 import os
+import threading
 from datetime import datetime
 from typing import Dict, List, Optional
 from pathlib import Path
@@ -23,17 +24,19 @@ class MigrationTracker:
         """
         self.tracker_file = Path(tracker_file)
         self.tracker_file.parent.mkdir(parents=True, exist_ok=True)
+        self._lock = threading.Lock()
         self._initialize_tracker()
     
     def _initialize_tracker(self):
         """Initialize the tracker CSV file with headers if it doesn't exist."""
-        if not self.tracker_file.exists():
-            with open(self.tracker_file, 'w', newline='') as f:
-                writer = csv.writer(f)
-                writer.writerow([
-                    'ticket_id', 'jira_status', 'jira_id', 'reason', 
-                    'created_at', 'updated_at'
-                ])
+        with self._lock:
+            if not self.tracker_file.exists():
+                with open(self.tracker_file, 'w', newline='') as f:
+                    writer = csv.writer(f)
+                    writer.writerow([
+                        'ticket_id', 'jira_status', 'jira_id', 'reason', 
+                        'created_at', 'updated_at'
+                    ])
     
     def get_ticket_status(self, ticket_id: int) -> Optional[Dict[str, str]]:
         """
@@ -45,11 +48,28 @@ class MigrationTracker:
         Returns:
             Status dictionary or None if not found
         """
-        with open(self.tracker_file, 'r', newline='') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                if int(row['ticket_id']) == ticket_id:
-                    return row
+        try:
+            with open(self.tracker_file, 'r', newline='') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if int(row['ticket_id']) == ticket_id:
+                        return row
+        except FileNotFoundError:
+            pass
+        return None
+    
+    def _get_ticket_status_internal(self, ticket_id: int) -> Optional[Dict[str, str]]:
+        """
+        Internal method to get ticket status without holding the main lock.
+        """
+        try:
+            with open(self.tracker_file, 'r', newline='') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if int(row['ticket_id']) == ticket_id:
+                        return row
+        except FileNotFoundError:
+            pass
         return None
     
     def update_ticket_status(self, ticket_id: int, jira_status: str, 
@@ -63,25 +83,29 @@ class MigrationTracker:
             jira_id: JIRA issue key (if successful)
             reason: Reason for failure (if failed)
         """
-        current_time = datetime.now().isoformat()
-        
-        # Check if ticket already exists
-        existing_status = self.get_ticket_status(ticket_id)
-        
-        if existing_status:
-            # Update existing record
-            self._update_existing_record(ticket_id, jira_status, jira_id, reason, current_time)
-        else:
-            # Add new record
-            self._add_new_record(ticket_id, jira_status, jira_id, reason, current_time)
+        with self._lock:
+            current_time = datetime.now().isoformat()
+            
+            # Check if ticket already exists (without holding the lock)
+            existing_status = self._get_ticket_status_internal(ticket_id)
+            
+            if existing_status:
+                # Update existing record
+                self._update_existing_record(ticket_id, jira_status, jira_id, reason, current_time)
+            else:
+                # Add new record
+                self._add_new_record(ticket_id, jira_status, jira_id, reason, current_time)
     
     def _update_existing_record(self, ticket_id: int, jira_status: str, 
                               jira_id: str, reason: str, updated_at: str):
         """Update an existing record in the CSV."""
         rows = []
-        with open(self.tracker_file, 'r', newline='') as f:
-            reader = csv.DictReader(f)
-            rows = list(reader)
+        try:
+            with open(self.tracker_file, 'r', newline='') as f:
+                reader = csv.DictReader(f)
+                rows = list(reader)
+        except FileNotFoundError:
+            rows = []
         
         # Update the specific row
         for row in rows:
@@ -120,25 +144,26 @@ class MigrationTracker:
         Returns:
             Dictionary with status counts
         """
-        summary = {
-            'total': 0,
-            'success': 0,
-            'failed': 0,
-            'in_progress': 0,
-            'pending': 0
-        }
-        
-        with open(self.tracker_file, 'r', newline='') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                summary['total'] += 1
-                status = row['jira_status'].lower()
-                if status in summary:
-                    summary[status] += 1
-                else:
-                    summary['pending'] += 1
-        
-        return summary
+        with self._lock:
+            summary = {
+                'total': 0,
+                'success': 0,
+                'failed': 0,
+                'in_progress': 0,
+                'pending': 0
+            }
+            
+            with open(self.tracker_file, 'r', newline='') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    summary['total'] += 1
+                    status = row['jira_status'].lower()
+                    if status in summary:
+                        summary[status] += 1
+                    else:
+                        summary['pending'] += 1
+            
+            return summary
     
     def get_failed_tickets(self) -> List[Dict[str, str]]:
         """
