@@ -58,90 +58,77 @@ class TicketMigrator:
     """
     
     def __init__(self, config: JiraConfig, data_directory: str = "../data_to_be_migrated", max_workers: int = 8, log_file: str = None):
-                """
-                Initialize the ticket migrator.
-                
-                Args:
-                    config: JIRA configuration
-                    data_directory: Path to Freshdesk data directory
-                    max_workers: Maximum number of parallel workers
-                    log_file: Path to log file (optional)
-                """
-                self.config = config
-                self.max_workers = max_workers
-                
-                # Initialize logger
-                self.logger = get_logger(log_file, "INFO")
-                
-                # Rate limiting
-                self.rate_limit_lock = threading.Lock()
-                self.last_request_time = 0
-                self.min_request_interval = 0.5  # 500ms between requests (2 requests per second) - very conservative for safety
-                
-                # Initialize components
-                self.data_loader = DataLoader(data_directory)
-                self.field_mapper = FieldMapper()
-                self.ticket_converter = TicketConverter(self.field_mapper)
-                self.bulk_uploader = BulkAttachmentUploader({
-                    'domain': config.domain,
-                    'email': config.email,
-                    'api_token': config.api_token
-                })
-                self.tracker = MigrationTracker()
-                
-                # Migration statistics with thread safety
-                self.stats_lock = threading.Lock()
-                self.stats = {
-                    'total_tickets': 0,
-                    'successful_migrations': 0,
-                    'failed_migrations': 0,
-                    'total_attachments': 0,
-                    'successful_attachments': 0
-                }
-    
-    def _rate_limit(self):
-        """Implement rate limiting for API requests."""
+        """
+        Initialize the ticket migrator.
+        
+        Args:
+            config: JIRA configuration
+            data_directory: Path to Freshdesk data directory
+            max_workers: Maximum number of parallel workers
+            log_file: Path to log file (optional)
+        """
+        self.config = config
+        self.max_workers = max_workers
+        
+        # Initialize logger
+        self.logger = get_logger(log_file, "INFO")
+        
+        # Rate limiting
+        self.rate_limit_lock = threading.Lock()
+        self.last_request_time = 0
+        self.min_request_interval = 0.5  # 500ms between requests (2 requests per second) - very conservative for safety
+        
+        # Initialize components
+        self.data_loader = DataLoader(data_directory)
+        self.field_mapper = FieldMapper()
+        self.ticket_converter = TicketConverter(self.field_mapper)
+        self.bulk_uploader = BulkAttachmentUploader({
+            'domain': config.domain,
+            'email': config.email,
+            'api_token': config.api_token
+        })
+        self.tracker = MigrationTracker()
+        
+        # Migration statistics with thread safety
+        self.stats_lock = threading.Lock()
+        self.stats = {
+            'total_tickets': 0,
+            'successful_migrations': 0,
+            'failed_migrations': 0,
+            'total_attachments': 0,
+            'successful_attachments': 0,
+            'orphaned_issues_cleaned': 0
+        }
+        
+        # Atomic operation tracking
+        self.atomic_lock = threading.Lock()
+        self.pending_issues = {}  # ticket_id -> issue_key for cleanup
+        
+    def _get_jira_client(self) -> JIRA:
+        """
+        Get a JIRA client with rate limiting.
+        
+        Returns:
+            JIRA client instance
+        """
         with self.rate_limit_lock:
             current_time = time.time()
             time_since_last = current_time - self.last_request_time
+            
             if time_since_last < self.min_request_interval:
-                time.sleep(self.min_request_interval - time_since_last)
+                sleep_time = self.min_request_interval - time_since_last
+                time.sleep(sleep_time)
+            
             self.last_request_time = time.time()
-    
-    def _get_jira_client(self) -> JIRA:
-        """Get a JIRA client with rate limiting and retry logic."""
-        max_retries = 3
-        retry_delay = 5  # seconds
         
-        for attempt in range(max_retries):
-            try:
-                self._rate_limit()
-                jira = JIRA(
-                    server=f"https://{self.config.domain}",
-                    basic_auth=(self.config.email, self.config.api_token)
-                )
-                # Test the connection
-                jira.myself()
-                return jira
-            except Exception as e:
-                error_msg = str(e)
-                if attempt < max_retries - 1:  # Not the last attempt
-                    if "429" in error_msg or "rate" in error_msg.lower():
-                        wait_time = retry_delay * (2 ** attempt)  # Exponential backoff
-                        print(f"⚠️  Rate limit hit on JIRA connection (attempt {attempt + 1}/{max_retries}). Waiting {wait_time}s...")
-                        time.sleep(wait_time)
-                        continue
-                    else:
-                        print(f"⚠️  JIRA connection error (attempt {attempt + 1}/{max_retries}): {error_msg}")
-                        time.sleep(retry_delay)
-                        continue
-                else:
-                    # Last attempt failed
-                    raise e
+        return JIRA(
+            server=f'https://{self.config.domain}',
+            basic_auth=(self.config.email, self.config.api_token)
+        )
     
     def _extract_failed_field_data(self, ticket_id: int, failed_fields: List[str]) -> str:
         """
-        Extract data for failed fields to add to description.
+        Extract data from failed fields to add to description.
         
         Args:
             ticket_id: Freshdesk ticket ID
@@ -151,55 +138,46 @@ class TicketMigrator:
             Formatted string with failed field data
         """
         try:
-            # Load ticket data
+            # Load ticket data to get field mappings
             ticket_data = self.data_loader.load_ticket_data(ticket_id)
-            if not ticket_data:
+            if not ticket_data['ticket_details']:
                 return ""
             
-            # Create reverse mapping from JIRA field IDs to Freshdesk field names
-            reverse_mapping = {}
-            field_mapping = self.field_mapper.field_mapping
+            # Get field mappings
+            field_mappings = self.field_mapper.get_field_mappings()
             
-            # Known failed mappings for testing
-            known_failed_mappings = {
-                'customfield_99999': ('ticket_fields', 'priority'),
-                'customfield_88888': ('ticket_fields', 'status')
+            # Reverse lookup: JIRA field ID -> Freshdesk field name
+            reverse_mappings = {}
+            for fd_field, mapping in field_mappings.items():
+                if mapping.get('jira_field'):
+                    reverse_mappings[mapping['jira_field']] = fd_field
+            
+            # Group failed fields by category
+            failed_sections = {
+                'ticket_fields': [],
+                'conversation_fields': [],
+                'attachment_fields': [],
+                'custom_fields': []
             }
             
-            for category, fields in field_mapping.items():
-                for fd_field, jira_field_info in fields.items():
-                    if isinstance(jira_field_info, dict) and 'jira_field' in jira_field_info:
-                        jira_field = jira_field_info['jira_field']
-                        if jira_field in failed_fields:
-                            reverse_mapping[jira_field] = (category, fd_field)
-            
-            # Add known failed mappings
-            for jira_field, (category, fd_field) in known_failed_mappings.items():
-                if jira_field in failed_fields:
-                    reverse_mapping[jira_field] = (category, fd_field)
-            
-            # Build failed field data
-            failed_sections = {}
-            for field_id in failed_fields:
-                if field_id in reverse_mapping:
-                    category, fd_field = reverse_mapping[field_id]
-                    if category not in failed_sections:
-                        failed_sections[category] = []
-                    
-                    # Get the field value
-                    if category == 'ticket_fields' and fd_field in ticket_data:
-                        value = ticket_data[fd_field]
-                    elif category == 'conversation_fields' and 'conversations' in ticket_data:
-                        # Handle conversation fields
-                        conv_data = ticket_data['conversations']
-                        if conv_data and fd_field in conv_data[0]:
-                            value = conv_data[0][fd_field]
-                        else:
-                            value = "N/A"
-                    else:
-                        value = "N/A"
-                    
-                    failed_sections[category].append(f"{fd_field}: {value}")
+            for jira_field in failed_fields:
+                fd_field = reverse_mappings.get(jira_field, jira_field)
+                
+                # Determine category
+                category = 'custom_fields'
+                if fd_field in ['subject', 'description', 'priority', 'status', 'type']:
+                    category = 'ticket_fields'
+                elif fd_field.startswith('conversation'):
+                    category = 'conversation_fields'
+                elif fd_field.startswith('attachment'):
+                    category = 'attachment_fields'
+                
+                # Get field value
+                value = ticket_data['ticket_details'].get(fd_field, '')
+                if value is None or value == '':
+                    value = "N/A"
+                
+                failed_sections[category].append(f"{fd_field}: {value}")
             
             # Format the failed data
             result = []
@@ -215,6 +193,74 @@ class TicketMigrator:
         except Exception as e:
             print(f"⚠️  Error extracting failed field data: {str(e)}")
             return ""
+    
+    def _cleanup_orphaned_issue(self, issue_key: str, ticket_id: int) -> bool:
+        """
+        Clean up an orphaned JIRA issue if migration fails.
+        
+        Args:
+            issue_key: JIRA issue key to delete
+            ticket_id: Freshdesk ticket ID for logging
+            
+        Returns:
+            True if cleanup successful, False otherwise
+        """
+        try:
+            print(f"🧹 Cleaning up orphaned issue {issue_key} for ticket {ticket_id}...")
+            jira = self._get_jira_client()
+            
+            # Check if issue exists before trying to delete
+            try:
+                jira.issue(issue_key)
+            except Exception:
+                print(f"⚠️ Issue {issue_key} doesn't exist, skipping cleanup")
+                return True  # Consider this a successful cleanup
+            
+            jira.delete_issue(issue_key)
+            print(f"✅ Successfully deleted orphaned issue {issue_key}")
+            
+            with self.stats_lock:
+                self.stats['orphaned_issues_cleaned'] += 1
+            
+            return True
+            
+        except Exception as e:
+            print(f"❌ Failed to cleanup orphaned issue {issue_key}: {str(e)}")
+            return False
+    
+    def _mark_issue_for_cleanup(self, ticket_id: int, issue_key: str):
+        """
+        Mark an issue for potential cleanup if migration fails.
+        
+        Args:
+            ticket_id: Freshdesk ticket ID
+            issue_key: JIRA issue key
+        """
+        with self.atomic_lock:
+            self.pending_issues[ticket_id] = issue_key
+    
+    def _remove_cleanup_mark(self, ticket_id: int):
+        """
+        Remove cleanup mark when migration succeeds.
+        
+        Args:
+            ticket_id: Freshdesk ticket ID
+        """
+        with self.atomic_lock:
+            self.pending_issues.pop(ticket_id, None)
+    
+    def _cleanup_pending_issues(self):
+        """
+        Clean up all pending issues that weren't successfully completed.
+        """
+        with self.atomic_lock:
+            pending = self.pending_issues.copy()
+            self.pending_issues.clear()
+        
+        if pending:
+            print(f"🧹 Cleaning up {len(pending)} pending issues...")
+            for ticket_id, issue_key in pending.items():
+                self._cleanup_orphaned_issue(issue_key, ticket_id)
     
     def validate_setup(self) -> bool:
         """
@@ -256,7 +302,7 @@ class TicketMigrator:
     
     def migrate_single_ticket(self, ticket_id: int, dry_run: bool = False) -> bool:
         """
-        Migrate a single ticket to JIRA with 3-retry mechanism.
+        Migrate a single ticket to JIRA with atomic operation support.
         
         Args:
             ticket_id: Freshdesk ticket ID
@@ -306,8 +352,8 @@ class TicketMigrator:
                     self.stats['successful_migrations'] += 1
                 return True
             
-            # Create JIRA issue with 3-retry mechanism
-            return self._create_jira_issue_with_retries(ticket_id, jira_issue, ticket_data)
+            # Create JIRA issue with atomic operation support
+            return self._create_jira_issue_atomic(ticket_id, jira_issue, ticket_data)
             
         except Exception as e:
             error_msg = f"Failed to migrate ticket {ticket_id}: {str(e)}"
@@ -320,9 +366,9 @@ class TicketMigrator:
             
             return False
     
-    def _create_jira_issue_with_retries(self, ticket_id: int, jira_issue: Dict[str, Any], ticket_data: Dict[str, Any]) -> bool:
+    def _create_jira_issue_atomic(self, ticket_id: int, jira_issue: Dict[str, Any], ticket_data: Dict[str, Any]) -> bool:
         """
-        Create JIRA issue with 3-retry mechanism.
+        Create JIRA issue with atomic operation - either complete success or complete failure.
         
         Args:
             ticket_id: Freshdesk ticket ID
@@ -334,20 +380,43 @@ class TicketMigrator:
         """
         max_retries = 3
         retry_delay = 2  # seconds
+        created_issue = None
         
         for attempt in range(max_retries):
             try:
                 print(f"🚀 Creating JIRA issue for ticket {ticket_id} (attempt {attempt + 1}/{max_retries})...")
                 
                 # Try to create the issue
-                issue = self._create_jira_issue_single_attempt(ticket_id, jira_issue)
+                created_issue = self._create_jira_issue_single_attempt(ticket_id, jira_issue)
                 
-                # If successful, upload attachments and update tracker
-                self._upload_attachments(issue.key, ticket_data)
-                print(f"✅ Successfully migrated ticket {ticket_id} to {issue.key}")
+                # Mark for cleanup in case of failure
+                self._mark_issue_for_cleanup(ticket_id, created_issue.key)
                 
-                # Update tracker with success
-                self.tracker.update_ticket_status(ticket_id, "success", jira_id=issue.key)
+                # Upload attachments
+                try:
+                    self._upload_attachments(created_issue.key, ticket_data)
+                except Exception as attachment_error:
+                    print(f"❌ Attachment upload failed for {created_issue.key}: {str(attachment_error)}")
+                    # Clean up the issue since attachments failed
+                    self._cleanup_orphaned_issue(created_issue.key, ticket_id)
+                    # Remove cleanup mark since we already cleaned up
+                    self._remove_cleanup_mark(ticket_id)
+                    raise attachment_error
+                
+                # Update tracker with success (atomic with cleanup mark removal)
+                try:
+                    self.tracker.update_ticket_status(ticket_id, "success", jira_id=created_issue.key)
+                    # Remove cleanup mark since we succeeded
+                    self._remove_cleanup_mark(ticket_id)
+                except Exception as tracker_error:
+                    print(f"❌ Tracker update failed for {created_issue.key}: {str(tracker_error)}")
+                    # Clean up the issue since tracker update failed
+                    self._cleanup_orphaned_issue(created_issue.key, ticket_id)
+                    # Remove cleanup mark since we already cleaned up
+                    self._remove_cleanup_mark(ticket_id)
+                    raise tracker_error
+                
+                print(f"✅ Successfully migrated ticket {ticket_id} to {created_issue.key}")
                 with self.stats_lock:
                     self.stats['successful_migrations'] += 1
                 
@@ -356,6 +425,11 @@ class TicketMigrator:
             except Exception as e:
                 error_msg = str(e)
                 print(f"❌ Attempt {attempt + 1}/{max_retries} failed for ticket {ticket_id}: {error_msg}")
+                
+                # Clean up any created issue
+                if created_issue:
+                    self._cleanup_orphaned_issue(created_issue.key, ticket_id)
+                    created_issue = None
                 
                 if attempt < max_retries - 1:
                     # Not the last attempt, wait and retry
@@ -584,18 +658,27 @@ class TicketMigrator:
         completed = 0
         total = len(ticket_ids)
         
-        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            # Submit all tasks
-            future_to_ticket = {
-                executor.submit(self._migrate_ticket_worker, args): args[0] 
-                for args in worker_args
-            }
-            
-            # Process completed tasks
-            for future in as_completed(future_to_ticket):
-                ticket_id, success = future.result()
-                completed += 1
-                self.logger.progress(completed, total, ticket_id, "SUCCESS" if success else "FAILED")
+        try:
+            with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+                # Submit all tasks
+                future_to_ticket = {
+                    executor.submit(self._migrate_ticket_worker, args): args[0] 
+                    for args in worker_args
+                }
+                
+                # Process completed tasks
+                for future in as_completed(future_to_ticket):
+                    ticket_id, success = future.result()
+                    completed += 1
+                    self.logger.progress(completed, total, ticket_id, "SUCCESS" if success else "FAILED")
+        except KeyboardInterrupt:
+            print("\n⚠️ Migration interrupted by user. Cleaning up pending issues...")
+            self._cleanup_pending_issues()
+            raise
+        except Exception as e:
+            print(f"\n❌ Migration failed. Cleaning up pending issues...")
+            self._cleanup_pending_issues()
+            raise
         
         return self._get_migration_summary()
     
@@ -634,6 +717,7 @@ class TicketMigrator:
             'total_attachments': self.stats['total_attachments'],
             'successful_attachments': self.stats['successful_attachments'],
             'attachment_success_rate': self.stats['successful_attachments'] / self.stats['total_attachments'] if self.stats['total_attachments'] > 0 else 0,
+            'orphaned_issues_cleaned': self.stats['orphaned_issues_cleaned'],
             'tracker_summary': tracker_summary
         }
         
@@ -735,9 +819,17 @@ def main():
             sys.exit(1)
         
         # Perform migration
-        summary = migrator.migrate_tickets(ticket_ids, dry_run, parallel=not sequential)
-        
-        # Summary is already logged by the logger
+        try:
+            summary = migrator.migrate_tickets(ticket_ids, dry_run, parallel=not sequential)
+            
+            # Clean up any remaining pending issues
+            migrator._cleanup_pending_issues()
+            
+            # Summary is already logged by the logger
+        except KeyboardInterrupt:
+            print("\n⚠️ Migration interrupted by user. Cleaning up...")
+            migrator._cleanup_pending_issues()
+            sys.exit(1)
         
     except Exception as e:
         # Try to get logger if available, otherwise use print
