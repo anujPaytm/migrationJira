@@ -10,6 +10,7 @@ import json
 import argparse
 import time
 import threading
+from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Dict, Any, Optional, Tuple
 from pathlib import Path
@@ -635,6 +636,14 @@ class TicketMigrator:
 
 def main():
     """Main function for the migration script."""
+    # Create logs directory if it doesn't exist
+    logs_dir = Path("logs")
+    logs_dir.mkdir(exist_ok=True)
+    
+    # Generate default log filename with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    default_log_file = logs_dir / f"migration_{timestamp}.log"
+    
     # Check if command-line arguments are provided (for backward compatibility)
     if len(sys.argv) > 1:
         # Use command-line arguments if provided
@@ -653,7 +662,7 @@ def main():
         # Use command-line arguments
         data_dir = args.data_dir
         max_workers = args.workers
-        log_file = args.log_file
+        log_file = args.log_file if args.log_file else str(default_log_file)
         dry_run = args.dry_run
         sequential = args.sequential
         
@@ -672,7 +681,7 @@ def main():
         # Use environment variables
         data_dir = os.getenv('DATA_DIRECTORY', '../data_to_be_migrated')
         max_workers = int(os.getenv('PARALLEL_WORKERS', '8'))
-        log_file = os.getenv('LOG_FILE', '')
+        log_file = os.getenv('LOG_FILE', str(default_log_file))
         dry_run = os.getenv('DRY_RUN', 'false').lower() == 'true'
         sequential = os.getenv('SEQUENTIAL_MODE', 'false').lower() == 'true'
         migrate_all = os.getenv('MIGRATE_ALL', 'false').lower() == 'true'
@@ -694,6 +703,10 @@ def main():
         
         # Initialize migrator with logger
         migrator = TicketMigrator(config, data_dir, max_workers=max_workers, log_file=log_file if log_file else None)
+        
+        # Log the log file location
+        if log_file:
+            print(f"📝 Migration logs will be saved to: {log_file}")
         
         # Validate setup
         if not migrator.validate_setup():

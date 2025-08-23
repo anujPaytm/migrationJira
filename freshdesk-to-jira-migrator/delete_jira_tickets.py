@@ -8,6 +8,8 @@ import os
 import sys
 import time
 import argparse
+from datetime import datetime
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Optional
 from jira import JIRA
@@ -15,19 +17,28 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Add project root and src to path for imports
+project_root = Path(__file__).parent
+sys.path.insert(0, str(project_root))
+sys.path.insert(0, str(project_root / "src"))
+
+from utils.logger import get_logger
+
 class JiraTicketDeleter:
     """
     Deletes JIRA tickets in parallel batches.
     """
     
-    def __init__(self, max_workers: int = 10):
+    def __init__(self, max_workers: int = 10, log_file: str = None):
         """
         Initialize the JIRA ticket deleter.
         
         Args:
             max_workers: Maximum number of parallel workers for deletion
+            log_file: Path to log file (optional)
         """
         self.max_workers = max_workers
+        self.logger = get_logger(log_file, "INFO")
         self.jira = self._get_jira_client()
         self.project_key = os.getenv('JIRA_PROJECT_KEY', 'FTJM')
         
@@ -56,7 +67,7 @@ class JiraTicketDeleter:
         Returns:
             List of issue keys to delete
         """
-        print(f"🔍 Finding all issues after {after_key}...")
+        self.logger.info(f"Finding all issues after {after_key}...")
         
         # Extract the number from the after_key
         try:
@@ -85,7 +96,7 @@ class JiraTicketDeleter:
                 issue_keys = [issue.key for issue in issues]
                 all_issues.extend(issue_keys)
                 
-                print(f"📋 Found batch: {len(issue_keys)} issues (total: {len(all_issues)})")
+                self.logger.info(f"Found batch: {len(issue_keys)} issues (total: {len(all_issues)})")
                 
                 if len(issues) < batch_size:
                     break
@@ -93,10 +104,10 @@ class JiraTicketDeleter:
                 start_at += batch_size
                 
             except Exception as e:
-                print(f"❌ Error fetching issues: {str(e)}")
+                self.logger.error(f"Error fetching issues: {str(e)}")
                 break
         
-        print(f"✅ Found {len(all_issues)} issues to delete after {after_key}")
+        self.logger.info(f"Found {len(all_issues)} issues to delete after {after_key}")
         return all_issues
     
     def get_all_project_issues(self, batch_size: int = 100) -> List[str]:
@@ -109,7 +120,7 @@ class JiraTicketDeleter:
         Returns:
             List of all issue keys in the project
         """
-        print(f"🔍 Finding all issues in project {self.project_key}...")
+        self.logger.info(f"Finding all issues in project {self.project_key}...")
         
         jql = f"project = {self.project_key} ORDER BY key ASC"
         
@@ -131,7 +142,7 @@ class JiraTicketDeleter:
                 issue_keys = [issue.key for issue in issues]
                 all_issues.extend(issue_keys)
                 
-                print(f"📋 Found batch: {len(issue_keys)} issues (total: {len(all_issues)})")
+                self.logger.info(f"Found batch: {len(issue_keys)} issues (total: {len(all_issues)})")
                 
                 if len(issues) < batch_size:
                     break
@@ -139,10 +150,10 @@ class JiraTicketDeleter:
                 start_at += batch_size
                 
             except Exception as e:
-                print(f"❌ Error fetching issues: {str(e)}")
+                self.logger.error(f"Error fetching issues: {str(e)}")
                 break
         
-        print(f"✅ Found {len(all_issues)} total issues in project")
+        self.logger.info(f"Found {len(all_issues)} total issues in project")
         return all_issues
     
     def delete_issue_batch(self, issue_keys: List[str]) -> int:
@@ -158,7 +169,7 @@ class JiraTicketDeleter:
         if not issue_keys:
             return 0
         
-        print(f"🗑️  Deleting batch of {len(issue_keys)} issues...")
+        self.logger.info(f"Deleting batch of {len(issue_keys)} issues...")
         
         successful_deletions = 0
         
@@ -176,13 +187,13 @@ class JiraTicketDeleter:
                     success = future.result()
                     if success:
                         successful_deletions += 1
-                        print(f"✅ Deleted: {issue_key}")
+                        self.logger.info(f"Deleted: {issue_key}")
                     else:
-                        print(f"❌ Failed to delete: {issue_key}")
+                        self.logger.error(f"Failed to delete: {issue_key}")
                 except Exception as e:
-                    print(f"❌ Error deleting {issue_key}: {str(e)}")
+                    self.logger.error(f"Error deleting {issue_key}: {str(e)}")
         
-        print(f"📊 Batch complete: {successful_deletions}/{len(issue_keys)} deleted")
+        self.logger.info(f"Batch complete: {successful_deletions}/{len(issue_keys)} deleted")
         return successful_deletions
     
     def _delete_single_issue(self, issue_key: str) -> bool:
@@ -204,7 +215,7 @@ class JiraTicketDeleter:
             return True
             
         except Exception as e:
-            print(f"❌ Failed to delete {issue_key}: {str(e)}")
+            self.logger.error(f"Failed to delete {issue_key}: {str(e)}")
             return False
     
     def delete_issues_in_batches(self, issue_keys: List[str], batch_size: int = 100, 
@@ -221,16 +232,16 @@ class JiraTicketDeleter:
             Total number of successfully deleted issues
         """
         if not issue_keys:
-            print("ℹ️  No issues to delete.")
+            self.logger.info("No issues to delete.")
             return 0
         
-        print(f"🎯 Planning to delete {len(issue_keys)} issues in batches of {batch_size}")
-        print(f"🔧 Using {self.max_workers} parallel workers per batch")
+        self.logger.info(f"Planning to delete {len(issue_keys)} issues in batches of {batch_size}")
+        self.logger.info(f"Using {self.max_workers} parallel workers per batch")
         
         if not auto_confirm:
             confirm = input(f"\n⚠️  Are you sure you want to delete {len(issue_keys)} issues? (yes/no): ")
             if confirm.lower() != 'yes':
-                print("❌ Deletion cancelled.")
+                self.logger.info("Deletion cancelled.")
                 return 0
         
         total_deleted = 0
@@ -241,42 +252,51 @@ class JiraTicketDeleter:
             batch_num = (i // batch_size) + 1
             total_batches = (len(issue_keys) + batch_size - 1) // batch_size
             
-            print(f"\n🔄 Processing batch {batch_num}/{total_batches} ({len(batch)} issues)")
-            print(f"📋 Range: {batch[0]} to {batch[-1]}")
+            self.logger.info(f"Processing batch {batch_num}/{total_batches} ({len(batch)} issues)")
+            self.logger.info(f"Range: {batch[0]} to {batch[-1]}")
             
             if not auto_confirm:
                 confirm = input(f"Delete this batch? (yes/no/all): ")
                 if confirm.lower() == 'no':
-                    print("⏭️  Skipping this batch.")
+                    self.logger.info("Skipping this batch.")
                     continue
                 elif confirm.lower() == 'all':
                     auto_confirm = True
                 elif confirm.lower() != 'yes':
-                    print("❌ Invalid input. Skipping batch.")
+                    self.logger.error("Invalid input. Skipping batch.")
                     continue
             
             batch_deleted = self.delete_issue_batch(batch)
             total_deleted += batch_deleted
             
-            print(f"📊 Progress: {total_deleted}/{len(issue_keys)} total deleted")
+            self.logger.info(f"Progress: {total_deleted}/{len(issue_keys)} total deleted")
             
             # Small delay between batches
             if i + batch_size < len(issue_keys):
-                print("⏳ Waiting 2 seconds before next batch...")
+                self.logger.info("Waiting 2 seconds before next batch...")
                 time.sleep(2)
         
-        print(f"\n🎉 Deletion complete! {total_deleted}/{len(issue_keys)} issues deleted.")
+        self.logger.info(f"Deletion complete! {total_deleted}/{len(issue_keys)} issues deleted.")
         return total_deleted
 
 
 def main():
     """Main function for the deletion script."""
+    # Create logs directory if it doesn't exist
+    logs_dir = Path("logs")
+    logs_dir.mkdir(exist_ok=True)
+    
+    # Generate default log filename with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    default_log_file = logs_dir / f"deletion_{timestamp}.log"
+    
     parser = argparse.ArgumentParser(description='Delete JIRA tickets in batches')
     parser.add_argument('--after-key', help='Delete all issues after this key (e.g., FTJM-64)')
     parser.add_argument('--all', action='store_true', help='Delete all issues in the project')
     parser.add_argument('--batch-size', type=int, default=100, help='Number of issues per batch (default: 100)')
     parser.add_argument('--workers', type=int, default=10, help='Number of parallel workers (default: 10)')
     parser.add_argument('--auto-confirm', action='store_true', help='Skip confirmation prompts')
+    parser.add_argument('--log-file', help='Path to log file (optional)')
     
     args = parser.parse_args()
     
@@ -284,8 +304,14 @@ def main():
         print("❌ Error: Must specify either --after-key or --all")
         sys.exit(1)
     
+    # Use provided log file or default
+    log_file = args.log_file if args.log_file else str(default_log_file)
+    
     try:
-        deleter = JiraTicketDeleter(max_workers=args.workers)
+        deleter = JiraTicketDeleter(max_workers=args.workers, log_file=log_file)
+        
+        # Log the log file location
+        print(f"📝 Deletion logs will be saved to: {log_file}")
         
         if args.after_key:
             issue_keys = deleter.get_issues_after_key(args.after_key, args.batch_size)
