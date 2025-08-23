@@ -473,9 +473,18 @@ class TicketMigrator:
             issue_key: JIRA issue key
             ticket_data: Ticket data dictionary
         """
-        ticket_id = ticket_data['ticket_id']
-        ticket_attachments = ticket_data['ticket_attachments']
-        conversation_attachments = ticket_data['conversation_attachments']
+        # Validate ticket_data structure
+        if not isinstance(ticket_data, dict):
+            print(f"⚠️ Invalid ticket_data type for {issue_key}: {type(ticket_data)}")
+            return
+        
+        ticket_id = ticket_data.get('ticket_id')
+        if ticket_id is None:
+            print(f"⚠️ Missing ticket_id in ticket_data for {issue_key}")
+            return
+        
+        ticket_attachments = ticket_data.get('ticket_attachments', [])
+        conversation_attachments = ticket_data.get('conversation_attachments', [])
         
         # Upload ticket attachments
         if ticket_attachments:

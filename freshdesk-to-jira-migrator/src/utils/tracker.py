@@ -83,18 +83,22 @@ class MigrationTracker:
             jira_id: JIRA issue key (if successful)
             reason: Reason for failure (if failed)
         """
-        with self._lock:
-            current_time = datetime.now().isoformat()
-            
-            # Check if ticket already exists (without holding the lock)
-            existing_status = self._get_ticket_status_internal(ticket_id)
-            
-            if existing_status:
-                # Update existing record
-                self._update_existing_record(ticket_id, jira_status, jira_id, reason, current_time)
-            else:
-                # Add new record
-                self._add_new_record(ticket_id, jira_status, jira_id, reason, current_time)
+        try:
+            with self._lock:
+                current_time = datetime.now().isoformat()
+                
+                # Check if ticket already exists (without holding the lock)
+                existing_status = self._get_ticket_status_internal(ticket_id)
+                
+                if existing_status:
+                    # Update existing record
+                    self._update_existing_record(ticket_id, jira_status, jira_id, reason, current_time)
+                else:
+                    # Add new record
+                    self._add_new_record(ticket_id, jira_status, jira_id, reason, current_time)
+        except Exception as e:
+            print(f"❌ Error updating tracker for ticket {ticket_id}: {str(e)}")
+            # Don't re-raise the exception to prevent migration failure
     
     def _update_existing_record(self, ticket_id: int, jira_status: str, 
                               jira_id: str, reason: str, updated_at: str):
@@ -106,26 +110,44 @@ class MigrationTracker:
                 rows = list(reader)
         except FileNotFoundError:
             rows = []
+        except Exception as e:
+            print(f"❌ Error reading tracker file: {str(e)}")
+            rows = []
         
         # Update the specific row
+        updated = False
         for row in rows:
-            if int(row['ticket_id']) == ticket_id:
-                row['jira_status'] = jira_status
-                if jira_id:
-                    row['jira_id'] = jira_id
-                if reason:
-                    row['reason'] = reason
-                row['updated_at'] = updated_at
-                break
+            try:
+                if int(row['ticket_id']) == ticket_id:
+                    row['jira_status'] = jira_status
+                    if jira_id:
+                        row['jira_id'] = jira_id
+                    if reason:
+                        row['reason'] = reason
+                    row['updated_at'] = updated_at
+                    updated = True
+                    break
+            except (ValueError, KeyError) as e:
+                print(f"❌ Error processing row for ticket {ticket_id}: {str(e)}")
+                continue
+        
+        if not updated:
+            print(f"⚠️ Ticket {ticket_id} not found in tracker, adding new record")
+            self._add_new_record(ticket_id, jira_status, jira_id, reason, updated_at)
+            return
         
         # Write back to file
-        with open(self.tracker_file, 'w', newline='') as f:
-            writer = csv.DictWriter(f, fieldnames=[
-                'ticket_id', 'jira_status', 'jira_id', 'reason', 
-                'created_at', 'updated_at'
-            ])
-            writer.writeheader()
-            writer.writerows(rows)
+        try:
+            with open(self.tracker_file, 'w', newline='') as f:
+                writer = csv.DictWriter(f, fieldnames=[
+                    'ticket_id', 'jira_status', 'jira_id', 'reason', 
+                    'created_at', 'updated_at'
+                ])
+                writer.writeheader()
+                writer.writerows(rows)
+        except Exception as e:
+            print(f"❌ Error writing tracker file: {str(e)}")
+            raise
     
     def _add_new_record(self, ticket_id: int, jira_status: str, 
                        jira_id: str, reason: str, created_at: str):
