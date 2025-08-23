@@ -192,7 +192,14 @@ class FieldMapper:
         # Always ensure we have a summary field
         summary = ticket_data.get('subject', '')
         if not summary or summary.strip() == '':
-            summary = f"Freshdesk Ticket #{ticket_data.get('id', 'Unknown')}: No Subject"
+            ticket_id = ticket_data.get('id', 'Unknown')
+            summary = f"Freshdesk Ticket #{ticket_id}: No Subject Provided"
+        else:
+            # Clean and truncate the summary if it's too long
+            summary = summary.strip()
+            if len(summary) > 255:  # JIRA summary limit
+                summary = summary[:252] + "..."
+        
         mapped_fields['summary'] = summary
         
         for field_name, field_value in ticket_data.items():

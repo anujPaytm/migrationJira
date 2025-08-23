@@ -58,6 +58,11 @@ class TicketConverter:
         for field_name, field_value in mapped_fields.items():
             jira_issue["fields"][field_name] = field_value
         
+        # Ensure summary field is always set
+        if not jira_issue["fields"].get('summary') or jira_issue["fields"]['summary'].strip() == '':
+            ticket_id = ticket.get('id', 'Unknown')
+            jira_issue["fields"]['summary'] = f"Freshdesk Ticket #{ticket_id}: No Subject Provided"
+        
         # Build description using hierarchical approach
         description_parts = []
         

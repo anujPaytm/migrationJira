@@ -304,8 +304,9 @@ def main():
         print("❌ Error: Must specify either --after-key or --all")
         sys.exit(1)
     
-    # Use provided log file or default
-    log_file = args.log_file if args.log_file else str(default_log_file)
+    # Use provided log file, environment variable, or default
+    env_log_file = os.getenv('LOG_FILE', '')
+    log_file = args.log_file if args.log_file else (env_log_file if env_log_file else str(default_log_file))
     
     try:
         deleter = JiraTicketDeleter(max_workers=args.workers, log_file=log_file)
