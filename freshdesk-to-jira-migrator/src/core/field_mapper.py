@@ -189,6 +189,12 @@ class FieldMapper:
         mapped_fields = {}
         unmapped_fields = self.get_unmapped_fields(ticket_data, "ticket_fields")
         
+        # Always ensure we have a summary field
+        summary = ticket_data.get('subject', '')
+        if not summary or summary.strip() == '':
+            summary = f"Freshdesk Ticket #{ticket_data.get('id', 'Unknown')}: No Subject"
+        mapped_fields['summary'] = summary
+        
         for field_name, field_value in ticket_data.items():
             jira_field, mapped_value = self.map_field_value(field_name, field_value, "ticket_fields", user_data)
             if jira_field and mapped_value is not None:

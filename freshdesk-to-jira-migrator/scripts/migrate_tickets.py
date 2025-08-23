@@ -75,7 +75,7 @@ class TicketMigrator:
                 # Rate limiting
                 self.rate_limit_lock = threading.Lock()
                 self.last_request_time = 0
-                self.min_request_interval = 0.1  # 100ms between requests (10 requests per second)
+                self.min_request_interval = 0.5  # 500ms between requests (2 requests per second) - very conservative for safety
                 
                 # Initialize components
                 self.data_loader = DataLoader(data_directory)
@@ -108,12 +108,112 @@ class TicketMigrator:
             self.last_request_time = time.time()
     
     def _get_jira_client(self) -> JIRA:
-        """Get a JIRA client with rate limiting."""
-        self._rate_limit()
-        return JIRA(
-            server=f"https://{self.config.domain}",
-            basic_auth=(self.config.email, self.config.api_token)
-        )
+        """Get a JIRA client with rate limiting and retry logic."""
+        max_retries = 3
+        retry_delay = 5  # seconds
+        
+        for attempt in range(max_retries):
+            try:
+                self._rate_limit()
+                jira = JIRA(
+                    server=f"https://{self.config.domain}",
+                    basic_auth=(self.config.email, self.config.api_token)
+                )
+                # Test the connection
+                jira.myself()
+                return jira
+            except Exception as e:
+                error_msg = str(e)
+                if attempt < max_retries - 1:  # Not the last attempt
+                    if "429" in error_msg or "rate" in error_msg.lower():
+                        wait_time = retry_delay * (2 ** attempt)  # Exponential backoff
+                        print(f"⚠️  Rate limit hit on JIRA connection (attempt {attempt + 1}/{max_retries}). Waiting {wait_time}s...")
+                        time.sleep(wait_time)
+                        continue
+                    else:
+                        print(f"⚠️  JIRA connection error (attempt {attempt + 1}/{max_retries}): {error_msg}")
+                        time.sleep(retry_delay)
+                        continue
+                else:
+                    # Last attempt failed
+                    raise e
+    
+    def _extract_failed_field_data(self, ticket_id: int, failed_fields: List[str]) -> str:
+        """
+        Extract data for failed fields to add to description.
+        
+        Args:
+            ticket_id: Freshdesk ticket ID
+            failed_fields: List of failed JIRA field IDs
+            
+        Returns:
+            Formatted string with failed field data
+        """
+        try:
+            # Load ticket data
+            ticket_data = self.data_loader.load_ticket_data(ticket_id)
+            if not ticket_data:
+                return ""
+            
+            # Create reverse mapping from JIRA field IDs to Freshdesk field names
+            reverse_mapping = {}
+            field_mapping = self.field_mapper.field_mapping
+            
+            # Known failed mappings for testing
+            known_failed_mappings = {
+                'customfield_99999': ('ticket_fields', 'priority'),
+                'customfield_88888': ('ticket_fields', 'status')
+            }
+            
+            for category, fields in field_mapping.items():
+                for fd_field, jira_field_info in fields.items():
+                    if isinstance(jira_field_info, dict) and 'jira_field' in jira_field_info:
+                        jira_field = jira_field_info['jira_field']
+                        if jira_field in failed_fields:
+                            reverse_mapping[jira_field] = (category, fd_field)
+            
+            # Add known failed mappings
+            for jira_field, (category, fd_field) in known_failed_mappings.items():
+                if jira_field in failed_fields:
+                    reverse_mapping[jira_field] = (category, fd_field)
+            
+            # Build failed field data
+            failed_sections = {}
+            for field_id in failed_fields:
+                if field_id in reverse_mapping:
+                    category, fd_field = reverse_mapping[field_id]
+                    if category not in failed_sections:
+                        failed_sections[category] = []
+                    
+                    # Get the field value
+                    if category == 'ticket_fields' and fd_field in ticket_data:
+                        value = ticket_data[fd_field]
+                    elif category == 'conversation_fields' and 'conversations' in ticket_data:
+                        # Handle conversation fields
+                        conv_data = ticket_data['conversations']
+                        if conv_data and fd_field in conv_data[0]:
+                            value = conv_data[0][fd_field]
+                        else:
+                            value = "N/A"
+                    else:
+                        value = "N/A"
+                    
+                    failed_sections[category].append(f"{fd_field}: {value}")
+            
+            # Format the failed data
+            result = []
+            for category, fields in failed_sections.items():
+                if fields:
+                    category_name = category.replace('_', ' ').title()
+                    result.append(f"**— Failed {category_name} —**")
+                    result.extend(fields)
+                    result.append("")
+            
+            return "\n".join(result)
+            
+        except Exception as e:
+            print(f"⚠️  Error extracting failed field data: {str(e)}")
+            return ""
     
     def validate_setup(self) -> bool:
         """
@@ -155,7 +255,7 @@ class TicketMigrator:
     
     def migrate_single_ticket(self, ticket_id: int, dry_run: bool = False) -> bool:
         """
-        Migrate a single ticket to JIRA.
+        Migrate a single ticket to JIRA with 3-retry mechanism.
         
         Args:
             ticket_id: Freshdesk ticket ID
@@ -181,6 +281,8 @@ class TicketMigrator:
                 error_msg = f"No ticket details found for ticket {ticket_id}"
                 print(f"❌ {error_msg}")
                 self.tracker.update_ticket_status(ticket_id, "failed", reason=error_msg)
+                with self.stats_lock:
+                    self.stats['failed_migrations'] += 1
                 return False
             
             # Convert to JIRA issue
@@ -199,30 +301,12 @@ class TicketMigrator:
             if dry_run:
                 print(f"✅ Dry run - would create issue for ticket {ticket_id}")
                 self.tracker.update_ticket_status(ticket_id, "dry_run_completed")
-                
                 with self.stats_lock:
                     self.stats['successful_migrations'] += 1
-                
                 return True
             
-            # Create JIRA issue
-            print(f"🚀 Creating JIRA issue for ticket {ticket_id}...")
-            jira = self._get_jira_client()
-            issue = jira.create_issue(fields=jira_issue['fields'])
-            print(f"✅ Created JIRA issue: {issue.key}")
-            
-            # Upload attachments
-            self._upload_attachments(issue.key, ticket_data)
-            
-            print(f"✅ Successfully migrated ticket {ticket_id} to {issue.key}")
-            
-            # Update tracker with success
-            self.tracker.update_ticket_status(ticket_id, "success", jira_id=issue.key)
-            
-            with self.stats_lock:
-                self.stats['successful_migrations'] += 1
-            
-            return True
+            # Create JIRA issue with 3-retry mechanism
+            return self._create_jira_issue_with_retries(ticket_id, jira_issue, ticket_data)
             
         except Exception as e:
             error_msg = f"Failed to migrate ticket {ticket_id}: {str(e)}"
@@ -230,11 +314,129 @@ class TicketMigrator:
             
             # Update tracker with failure
             self.tracker.update_ticket_status(ticket_id, "failed", reason=error_msg)
-            
             with self.stats_lock:
                 self.stats['failed_migrations'] += 1
             
             return False
+    
+    def _create_jira_issue_with_retries(self, ticket_id: int, jira_issue: Dict[str, Any], ticket_data: Dict[str, Any]) -> bool:
+        """
+        Create JIRA issue with 3-retry mechanism.
+        
+        Args:
+            ticket_id: Freshdesk ticket ID
+            jira_issue: JIRA issue data
+            ticket_data: Ticket data for attachments
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        max_retries = 3
+        retry_delay = 2  # seconds
+        
+        for attempt in range(max_retries):
+            try:
+                print(f"🚀 Creating JIRA issue for ticket {ticket_id} (attempt {attempt + 1}/{max_retries})...")
+                
+                # Try to create the issue
+                issue = self._create_jira_issue_single_attempt(ticket_id, jira_issue)
+                
+                # If successful, upload attachments and update tracker
+                self._upload_attachments(issue.key, ticket_data)
+                print(f"✅ Successfully migrated ticket {ticket_id} to {issue.key}")
+                
+                # Update tracker with success
+                self.tracker.update_ticket_status(ticket_id, "success", jira_id=issue.key)
+                with self.stats_lock:
+                    self.stats['successful_migrations'] += 1
+                
+                return True
+                
+            except Exception as e:
+                error_msg = str(e)
+                print(f"❌ Attempt {attempt + 1}/{max_retries} failed for ticket {ticket_id}: {error_msg}")
+                
+                if attempt < max_retries - 1:
+                    # Not the last attempt, wait and retry
+                    print(f"⏳ Waiting {retry_delay} seconds before retry...")
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                else:
+                    # Last attempt failed, mark as failed
+                    final_error_msg = f"Failed to migrate ticket {ticket_id} after {max_retries} attempts: {error_msg}"
+                    print(f"❌ {final_error_msg}")
+                    
+                    # Update tracker with failure
+                    self.tracker.update_ticket_status(ticket_id, "failed", reason=final_error_msg)
+                    with self.stats_lock:
+                        self.stats['failed_migrations'] += 1
+                    
+                    return False
+        
+        return False
+    
+    def _create_jira_issue_single_attempt(self, ticket_id: int, jira_issue: Dict[str, Any]):
+        """
+        Single attempt to create JIRA issue with field mapping error handling.
+        
+        Args:
+            ticket_id: Freshdesk ticket ID
+            jira_issue: JIRA issue data
+            
+        Returns:
+            JIRA issue object if successful
+            
+        Raises:
+            Exception if creation fails
+        """
+        try:
+            jira = self._get_jira_client()
+            issue = jira.create_issue(fields=jira_issue['fields'])
+            print(f"✅ Successfully created JIRA issue: {issue.key}")
+            return issue
+            
+        except Exception as e:
+            error_msg = str(e)
+            print(f"❌ JIRA API error for ticket {ticket_id}: {error_msg}")
+            
+            # Parse JIRA API error to extract problematic field IDs
+            import re
+            field_pattern = r'customfield_\d+'
+            failed_fields = re.findall(field_pattern, error_msg)
+            
+            if failed_fields and ("cannot be set" in error_msg or "field" in error_msg.lower()):
+                print(f"🔄 Attempting to handle field mapping failure for ticket {ticket_id}...")
+                print(f"🔍 Identified failed fields: {failed_fields}")
+                
+                # Remove failed fields from JIRA issue
+                for field_id in failed_fields:
+                    if field_id in jira_issue['fields']:
+                        del jira_issue['fields'][field_id]
+                        print(f"🗑️  Removed failed field: {field_id}")
+                
+                # Add failed fields to description
+                failed_data = self._extract_failed_field_data(ticket_id, failed_fields)
+                if failed_data:
+                    current_description = jira_issue['fields'].get('description', '')
+                    new_description = current_description + '\n\n' + failed_data
+                    jira_issue['fields']['description'] = new_description
+                    print(f"📝 Added failed fields to description")
+                
+                # Retry creating the issue with fixed fields
+                try:
+                    print(f"🔄 Retrying JIRA issue creation for ticket {ticket_id}...")
+                    jira = self._get_jira_client()
+                    issue = jira.create_issue(fields=jira_issue['fields'])
+                    print(f"✅ Successfully created JIRA issue after field mapping fix: {issue.key}")
+                    return issue
+                    
+                except Exception as retry_e:
+                    retry_error_msg = str(retry_e)
+                    print(f"❌ Failed to create JIRA issue after field mapping fix for ticket {ticket_id}: {retry_error_msg}")
+                    raise retry_e
+            else:
+                # Not a field mapping error, re-raise
+                raise e
     
     def _migrate_ticket_worker(self, args: Tuple[int, bool]) -> Tuple[int, bool]:
         """

@@ -87,9 +87,15 @@ class TicketConverter:
         if conversations:
             conv_mapped_fields, conv_unmapped_fields = self.field_mapper.map_hierarchical_fields(conversations, "conversation_fields", user_data)
             
-            # Add mapped conversation fields to JIRA issue
+            # Handle conversation overflow properly
             for field_name, field_value in conv_mapped_fields.items():
-                jira_issue["fields"][field_name] = field_value
+                if len(str(field_value)) > 32000:
+                    # Handle conversation overflow
+                    overflow_mappings = self._handle_conversation_overflow(field_value, field_name)
+                    for overflow_field, overflow_value in overflow_mappings.items():
+                        jira_issue["fields"][overflow_field] = overflow_value
+                else:
+                    jira_issue["fields"][field_name] = field_value
             
             # Add unmapped conversations to description (only if parent field is not mapped)
             if conv_unmapped_fields and not conv_mapped_fields:
@@ -103,9 +109,15 @@ class TicketConverter:
         if all_attachments:
             att_mapped_fields, att_unmapped_fields = self.field_mapper.map_hierarchical_fields(all_attachments, "attachment_fields", user_data)
             
-            # Add mapped attachment fields to JIRA issue
+            # Handle attachment overflow properly
             for field_name, field_value in att_mapped_fields.items():
-                jira_issue["fields"][field_name] = field_value
+                if len(str(field_value)) > 32000:
+                    # Handle attachment overflow
+                    overflow_mappings = self._handle_attachment_overflow(field_value, field_name)
+                    for overflow_field, overflow_value in overflow_mappings.items():
+                        jira_issue["fields"][overflow_field] = overflow_value
+                else:
+                    jira_issue["fields"][field_name] = field_value
             
             # Add unmapped attachments to description (only if parent field is not mapped)
             if att_unmapped_fields and not att_mapped_fields:
@@ -445,13 +457,19 @@ class TicketConverter:
         # Assign chunks to fields
         overflow_mappings["description"] = chunks[0] if chunks else ""
         
-        # Use additional_info fields sequentially through the field mapper
-        for chunk in chunks[1:]:
-            next_field = self.field_mapper._get_next_additional_info_field()
-            if next_field:
-                overflow_mappings[next_field] = chunk
+        # Use additional_info fields sequentially (first-come-first-served starting from 10357)
+        additional_info_fields = [
+            "customfield_10357", "customfield_10358", "customfield_10359", "customfield_10360",
+            "customfield_10361", "customfield_10362", "customfield_10363", "customfield_10364",
+            "customfield_10365", "customfield_10366"  # FD_additional_info1-10
+        ]
+        
+        chunk_index = 1
+        for field_id in additional_info_fields:
+            if chunk_index < len(chunks):
+                overflow_mappings[field_id] = chunks[chunk_index]
+                chunk_index += 1
             else:
-                # No more additional_info fields available
                 break
         
         return overflow_mappings
@@ -534,5 +552,262 @@ class TicketConverter:
         break_point = data.rfind('\n', 0, max_length)
         if break_point > max_length * 0.8:  # Only use newline if it's not too far from max_length
             return break_point + 1
+        
+        return max_length
+    
+    def _handle_conversation_overflow(self, conversation_data: str, original_field: str) -> Dict[str, str]:
+        """
+        Handle conversation overflow using dedicated conversation overflow fields.
+        
+        Args:
+            conversation_data: The conversation data string
+            original_field: The original field name
+            
+        Returns:
+            Dictionary mapping field names to conversation chunks
+        """
+        overflow_mappings = {}
+        max_length = 32000
+        
+        if len(conversation_data) <= max_length:
+            overflow_mappings[original_field] = conversation_data
+            return overflow_mappings
+        
+        # Split conversation data into chunks
+        chunks = self._split_conversation_data(conversation_data, max_length)
+        
+        # First chunk goes to original field
+        overflow_mappings[original_field] = chunks[0] if chunks else ""
+        
+        # Use dedicated conversation overflow fields
+        conversation_overflow_fields = [
+            "customfield_10355"   # FD_conversation2 (only one overflow field exists)
+        ]
+        
+        chunk_index = 1
+        for field_id in conversation_overflow_fields:
+            if chunk_index < len(chunks):
+                overflow_mappings[field_id] = chunks[chunk_index]
+                chunk_index += 1
+            else:
+                break
+        
+        # If still more chunks, use additional_info fields
+        additional_info_fields = [
+            "customfield_10357", "customfield_10358", "customfield_10359", "customfield_10360",
+            "customfield_10361", "customfield_10362", "customfield_10363", "customfield_10364",
+            "customfield_10365", "customfield_10366"  # FD_additional_info1-10
+        ]
+        
+        for field_id in additional_info_fields:
+            if chunk_index < len(chunks):
+                overflow_mappings[field_id] = chunks[chunk_index]
+                chunk_index += 1
+            else:
+                break
+        
+        return overflow_mappings
+    
+    def _handle_attachment_overflow(self, attachment_data: str, original_field: str) -> Dict[str, str]:
+        """
+        Handle attachment overflow using dedicated attachment overflow fields.
+        
+        Args:
+            attachment_data: The attachment data string
+            original_field: The original field name
+            
+        Returns:
+            Dictionary mapping field names to attachment chunks
+        """
+        overflow_mappings = {}
+        max_length = 32000
+        
+        if len(attachment_data) <= max_length:
+            overflow_mappings[original_field] = attachment_data
+            return overflow_mappings
+        
+        # Split attachment data into chunks
+        chunks = self._split_attachment_data(attachment_data, max_length)
+        
+        # First chunk goes to original field
+        overflow_mappings[original_field] = chunks[0] if chunks else ""
+        
+        # Use dedicated attachment overflow field
+        attachment_overflow_field = "customfield_10356"  # FD_attachments_details2
+        
+        chunk_index = 1
+        if chunk_index < len(chunks):
+            overflow_mappings[attachment_overflow_field] = chunks[chunk_index]
+            chunk_index += 1
+        
+        # If still more chunks, use additional_info fields
+        additional_info_fields = [
+            "customfield_10357", "customfield_10358", "customfield_10359", "customfield_10360",
+            "customfield_10361", "customfield_10362", "customfield_10363", "customfield_10364",
+            "customfield_10365", "customfield_10366"  # FD_additional_info1-10
+        ]
+        
+        for field_id in additional_info_fields:
+            if chunk_index < len(chunks):
+                overflow_mappings[field_id] = chunks[chunk_index]
+                chunk_index += 1
+            else:
+                break
+        
+        return overflow_mappings
+    
+    def _split_conversation_data(self, data: str, max_length: int) -> List[str]:
+        """
+        Split conversation data into chunks for overflow fields.
+        
+        Args:
+            data: Conversation data string
+            max_length: Maximum length per field
+            
+        Returns:
+            List of conversation chunks
+        """
+        if len(data) <= max_length:
+            return [data]
+        
+        chunks = []
+        remaining_data = data
+        chunk_number = 1
+        
+        while remaining_data:
+            if len(remaining_data) <= max_length:
+                if chunk_number == 1:
+                    chunks.append(remaining_data)
+                else:
+                    header = f"**— Conversations (Continued {chunk_number}) —**\n"
+                    available_length = max_length - len(header)
+                    if len(remaining_data) <= available_length:
+                        chunks.append(header + remaining_data)
+                    else:
+                        break_point = self._find_conversation_break_point(remaining_data, available_length)
+                        chunks.append(header + remaining_data[:break_point])
+                        remaining_data = remaining_data[break_point:]
+                        chunk_number += 1
+                        continue
+                break
+            else:
+                if chunk_number == 1:
+                    # First chunk
+                    break_point = self._find_conversation_break_point(remaining_data, max_length)
+                    chunks.append(remaining_data[:break_point])
+                    remaining_data = remaining_data[break_point:]
+                else:
+                    # Subsequent chunks with header
+                    header = f"**— Conversations (Continued {chunk_number}) —**\n"
+                    available_length = max_length - len(header)
+                    break_point = self._find_conversation_break_point(remaining_data, available_length)
+                    chunks.append(header + remaining_data[:break_point])
+                    remaining_data = remaining_data[break_point:]
+                
+                chunk_number += 1
+        
+        return chunks
+    
+    def _split_attachment_data(self, data: str, max_length: int) -> List[str]:
+        """
+        Split attachment data into chunks for overflow fields.
+        
+        Args:
+            data: Attachment data string
+            max_length: Maximum length per field
+            
+        Returns:
+            List of attachment chunks
+        """
+        if len(data) <= max_length:
+            return [data]
+        
+        chunks = []
+        remaining_data = data
+        chunk_number = 1
+        
+        while remaining_data:
+            if len(remaining_data) <= max_length:
+                if chunk_number == 1:
+                    chunks.append(remaining_data)
+                else:
+                    header = f"**— Attachments (Continued {chunk_number}) —**\n"
+                    available_length = max_length - len(header)
+                    if len(remaining_data) <= available_length:
+                        chunks.append(header + remaining_data)
+                    else:
+                        break_point = self._find_attachment_break_point(remaining_data, available_length)
+                        chunks.append(header + remaining_data[:break_point])
+                        remaining_data = remaining_data[break_point:]
+                        chunk_number += 1
+                        continue
+                break
+            else:
+                if chunk_number == 1:
+                    # First chunk
+                    break_point = self._find_attachment_break_point(remaining_data, max_length)
+                    chunks.append(remaining_data[:break_point])
+                    remaining_data = remaining_data[break_point:]
+                else:
+                    # Subsequent chunks with header
+                    header = f"**— Attachments (Continued {chunk_number}) —**\n"
+                    available_length = max_length - len(header)
+                    break_point = self._find_attachment_break_point(remaining_data, available_length)
+                    chunks.append(header + remaining_data[:break_point])
+                    remaining_data = remaining_data[break_point:]
+                
+                chunk_number += 1
+        
+        return chunks
+    
+    def _find_conversation_break_point(self, data: str, max_length: int) -> int:
+        """
+        Find a good break point in conversation data.
+        
+        Args:
+            data: Conversation data string
+            max_length: Maximum length for this chunk
+            
+        Returns:
+            Index to break at
+        """
+        if len(data) <= max_length:
+            return len(data)
+        
+        # Look for conversation separators (--- or double newlines)
+        last_separator_pos = data.rfind('---', 0, max_length)
+        if last_separator_pos > 0:
+            return last_separator_pos + 3
+        
+        # Look for double newlines
+        last_newline_pos = data.rfind('\n\n', 0, max_length)
+        if last_newline_pos > 0:
+            return last_newline_pos + 2
+        
+        # Fall back to single newline
+        break_point = data.rfind('\n', 0, max_length)
+        if break_point > max_length * 0.8:
+            return break_point + 1
+        
+        return max_length
+    
+    def _find_attachment_break_point(self, data: str, max_length: int) -> int:
+        """
+        Find a good break point in attachment data.
+        
+        Args:
+            data: Attachment data string
+            max_length: Maximum length for this chunk
+            
+        Returns:
+            Index to break at
+        """
+        if len(data) <= max_length:
+            return len(data)
+        
+        # Look for attachment separators (newlines between attachment entries)
+        last_newline_pos = data.rfind('\n', 0, max_length)
+        if last_newline_pos > max_length * 0.8:
+            return last_newline_pos + 1
         
         return max_length

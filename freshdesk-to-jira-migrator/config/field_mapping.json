@@ -11,7 +11,7 @@
       "field_type": "custom",
       "mapper_function": null,
       "description": "All conversation data",
-      "overflow_fields": ["customfield_10355", "customfield_10356"],
+      "overflow_fields": ["customfield_10355"],
       "additional_overflow_fields": ["customfield_10357", "customfield_10358", "customfield_10359", "customfield_10360", "customfield_10361", "customfield_10362", "customfield_10363", "customfield_10364", "customfield_10365", "customfield_10366"],
       "max_length": 32000
     },
@@ -20,7 +20,7 @@
       "field_type": "custom",
       "mapper_function": null,
       "description": "All attachment details",
-      "overflow_fields": ["customfield_10369"],
+      "overflow_fields": ["customfield_10356"],
       "additional_overflow_fields": ["customfield_10357", "customfield_10358", "customfield_10359", "customfield_10360", "customfield_10361", "customfield_10362", "customfield_10363", "customfield_10364", "customfield_10365", "customfield_10366"],
       "max_length": 32000
     },
@@ -203,7 +203,7 @@
       "mapper_function": "map_id_to_string"
     },
     "custom_fields": {
-      "jira_field": "customfield_10354",
+      "jira_field": null,
       "field_type": "custom",
       "mapper_function": "map_custom_fields"
     }
