@@ -149,13 +149,13 @@ def extract_emails(email_data: Union[str, List[str]]) -> str:
 
 def format_date(date_string: str) -> str:
     """
-    Format date string to JIRA compatible format.
+    Format date string to JIRA compatible datetime format.
     
     Args:
         date_string: ISO format date string from Freshdesk
         
     Returns:
-        Formatted date string for JIRA
+        Formatted datetime string for JIRA (YYYY-MM-DD HH:MM:SS)
     """
     if not date_string:
         return ""
@@ -163,8 +163,8 @@ def format_date(date_string: str) -> str:
     try:
         # Parse ISO format date
         dt = datetime.fromisoformat(date_string.replace('Z', '+00:00'))
-        # Return in YYYY-MM-DD format for JIRA
-        return dt.strftime('%Y-%m-%d')
+        # Return in YYYY-MM-DD HH:MM:SS format for JIRA
+        return dt.strftime('%Y-%m-%d %H:%M:%S')
     except (ValueError, AttributeError):
         return date_string
 
