@@ -174,10 +174,18 @@ class DataLoader:
         Returns:
             Full file path or None if not found
         """
+        # Try the original filename first
         file_path = self.attachments_dir / str(ticket_id) / filename
         
         if file_path.exists():
             return str(file_path)
+        
+        # For conversation attachments, try with 'conv_' prefix
+        conv_filename = f"conv_{filename}"
+        conv_file_path = self.attachments_dir / str(ticket_id) / conv_filename
+        
+        if conv_file_path.exists():
+            return str(conv_file_path)
         
         return None
     

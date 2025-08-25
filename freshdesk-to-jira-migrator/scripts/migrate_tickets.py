@@ -411,7 +411,8 @@ class TicketMigrator:
                         ticket_id, "success", jira_id=created_issue.key,
                         total_attachments=attachment_stats['total'],
                         successful_attachments=attachment_stats['successful'],
-                        failed_attachments=attachment_stats['failed']
+                        failed_attachments=attachment_stats['failed'],
+                        attachment_type=attachment_stats.get('type', 'none')
                     )
                     # Remove cleanup mark since we succeeded
                     self._remove_cleanup_mark(ticket_id)
@@ -546,7 +547,7 @@ class TicketMigrator:
             
             return (ticket_id, False)
     
-    def _upload_attachments(self, issue_key: str, ticket_data: Dict[str, Any]) -> Dict[str, int]:
+    def _upload_attachments(self, issue_key: str, ticket_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Upload attachments for a ticket.
         
@@ -645,10 +646,24 @@ class TicketMigrator:
         if total_attachments > 0:
             self.logger.attachment_upload(ticket_id, total_attachments, successful_attachments)
         
+        # Determine attachment type
+        has_ticket_attachments = len(ticket_attachments) > 0
+        has_conversation_attachments = len(conversation_attachments) > 0
+        
+        if has_ticket_attachments and has_conversation_attachments:
+            attachment_type = 'mixed'
+        elif has_conversation_attachments:
+            attachment_type = 'conversation'
+        elif has_ticket_attachments:
+            attachment_type = 'attachment'
+        else:
+            attachment_type = 'none'
+        
         return {
             'total': total_attachments,
             'successful': successful_attachments,
-            'failed': failed_attachments
+            'failed': failed_attachments,
+            'type': attachment_type
         }
     
     def migrate_tickets(self, ticket_ids: List[int], dry_run: bool = False, parallel: bool = True) -> Dict[str, Any]:

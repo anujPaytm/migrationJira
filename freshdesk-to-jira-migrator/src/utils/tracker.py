@@ -36,7 +36,7 @@ class MigrationTracker:
                     writer.writerow([
                         'ticket_id', 'jira_status', 'jira_id', 'reason', 
                         'total_attachments', 'successful_attachments', 'failed_attachments',
-                        'created_at', 'updated_at'
+                        'attachment_type', 'created_at', 'updated_at'
                     ])
     
     def get_ticket_status(self, ticket_id: int) -> Optional[Dict[str, str]]:
@@ -75,7 +75,8 @@ class MigrationTracker:
     
     def update_ticket_status(self, ticket_id: int, jira_status: str, 
                            jira_id: str = None, reason: str = None,
-                           total_attachments: int = 0, successful_attachments: int = 0, failed_attachments: int = 0):
+                           total_attachments: int = 0, successful_attachments: int = 0, failed_attachments: int = 0,
+                           attachment_type: str = None):
         """
         Update the status of a ticket.
         
@@ -87,6 +88,7 @@ class MigrationTracker:
             total_attachments: Total number of attachments for this ticket
             successful_attachments: Number of successfully uploaded attachments
             failed_attachments: Number of failed attachment uploads
+            attachment_type: Type of attachments ('conversation', 'attachment', or 'mixed')
         """
         try:
             with self._lock:
@@ -98,11 +100,13 @@ class MigrationTracker:
                 if existing_status:
                     # Update existing record
                     self._update_existing_record(ticket_id, jira_status, jira_id, reason, 
-                                               total_attachments, successful_attachments, failed_attachments, current_time)
+                                               total_attachments, successful_attachments, failed_attachments, 
+                                               attachment_type, current_time)
                 else:
                     # Add new record
                     self._add_new_record(ticket_id, jira_status, jira_id, reason, 
-                                       total_attachments, successful_attachments, failed_attachments, current_time)
+                                       total_attachments, successful_attachments, failed_attachments, 
+                                       attachment_type, current_time)
         except Exception as e:
             print(f"❌ Error updating tracker for ticket {ticket_id}: {str(e)}")
             # Don't re-raise the exception to prevent migration failure
@@ -110,7 +114,7 @@ class MigrationTracker:
     def _update_existing_record(self, ticket_id: int, jira_status: str, 
                               jira_id: str, reason: str, 
                               total_attachments: int, successful_attachments: int, failed_attachments: int,
-                              updated_at: str):
+                              attachment_type: str, updated_at: str):
         """Update an existing record in the CSV."""
         rows = []
         try:
@@ -136,6 +140,8 @@ class MigrationTracker:
                     row['total_attachments'] = total_attachments
                     row['successful_attachments'] = successful_attachments
                     row['failed_attachments'] = failed_attachments
+                    if attachment_type:
+                        row['attachment_type'] = attachment_type
                     row['updated_at'] = updated_at
                     updated = True
                     break
@@ -145,7 +151,9 @@ class MigrationTracker:
         
         if not updated:
             print(f"⚠️ Ticket {ticket_id} not found in tracker, adding new record")
-            self._add_new_record(ticket_id, jira_status, jira_id, reason, updated_at)
+            self._add_new_record(ticket_id, jira_status, jira_id, reason, 
+                               total_attachments, successful_attachments, failed_attachments, 
+                               attachment_type, updated_at)
             return
         
         # Write back to file
@@ -153,7 +161,8 @@ class MigrationTracker:
             with open(self.tracker_file, 'w', newline='') as f:
                 writer = csv.DictWriter(f, fieldnames=[
                     'ticket_id', 'jira_status', 'jira_id', 'reason', 
-                    'created_at', 'updated_at'
+                    'total_attachments', 'successful_attachments', 'failed_attachments',
+                    'attachment_type', 'created_at', 'updated_at'
                 ])
                 writer.writeheader()
                 writer.writerows(rows)
@@ -164,14 +173,14 @@ class MigrationTracker:
     def _add_new_record(self, ticket_id: int, jira_status: str, 
                        jira_id: str, reason: str, 
                        total_attachments: int, successful_attachments: int, failed_attachments: int,
-                       created_at: str):
+                       attachment_type: str, created_at: str):
         """Add a new record to the CSV."""
         with open(self.tracker_file, 'a', newline='') as f:
             writer = csv.writer(f)
             writer.writerow([
                 ticket_id, jira_status, jira_id or '', reason or '', 
                 total_attachments, successful_attachments, failed_attachments,
-                created_at, created_at
+                attachment_type or '', created_at, created_at
             ])
     
     def get_migration_summary(self) -> Dict[str, int]:
