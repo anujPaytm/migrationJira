@@ -306,7 +306,7 @@ class TicketConverter:
     
     def _format_conversations_colon_separated(self, conversations: List[Dict[str, Any]], user_data: dict = None) -> str:
         """
-        Format conversations in colon-separated format (regardless of where they're stored).
+        Format conversations in pipe-separated format (regardless of where they're stored).
         
         Args:
             conversations: List of conversation data
@@ -321,7 +321,7 @@ class TicketConverter:
         # Define headers once - reordered with time fields first, then id
         headers = ["created_at", "updated_at", "conversation_id", "user_id", "private", "to_email", "from_email", "cc_email", "bcc_email"]
         
-        conversations_lines = ["**— Conversations —**", ':'.join(headers)]
+        conversations_lines = ["**— Conversations —**", '|'.join(headers)]
         
         for conv in conversations:
             # Get user information from user_data
@@ -373,7 +373,7 @@ class TicketConverter:
             body_text = conv.get('body_text', '')
             
             conversations_lines.extend([
-                ':'.join(values),
+                '|'.join(values),
                 "",  # Add blank line before body text
                 body_text,
                 "---",
@@ -384,7 +384,7 @@ class TicketConverter:
     
     def _format_attachments_colon_separated(self, attachments: List[Dict[str, Any]], user_data: dict = None) -> str:
         """
-        Format attachments in colon-separated format (regardless of where they're stored).
+        Format attachments in pipe-separated format (regardless of where they're stored).
         
         Args:
             attachments: List of attachment data
@@ -399,7 +399,7 @@ class TicketConverter:
         # Define headers once - reordered with time fields first, then id
         headers = ["created_at", "updated_at", "attachment_id", "newNamed file name", "size", "user_id", "conversation_id"]
         
-        attachment_lines = ["**— Attachment Details —**", ':'.join(headers)]
+        attachment_lines = ["**— Attachment Details —**", '|'.join(headers)]
         
         for attachment in attachments:
             # Get user information from user_data
@@ -436,7 +436,7 @@ class TicketConverter:
                 str(attachment.get('conversation_id', 'N/A'))
             ]
             
-            attachment_lines.append(':'.join(values))
+            attachment_lines.append('|'.join(values))
         
         return '\n'.join(attachment_lines)
     

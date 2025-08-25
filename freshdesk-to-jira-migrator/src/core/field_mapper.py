@@ -453,7 +453,7 @@ class FieldMapper:
         return '\n'.join(lines)
     
     def _format_conversations_for_parent(self, data: List[Dict[str, Any]], user_data: dict = None) -> str:
-        """Format conversations for parent field storage using colon-separated format."""
+        """Format conversations for parent field storage using pipe-separated format."""
         if not data:
             return ""
         
@@ -463,7 +463,7 @@ class FieldMapper:
             return ""
         
         headers = ["created_at", "updated_at", "conversation_id", "user_id", "private", "to_email", "from_email", "cc_email", "bcc_email"]
-        lines = ["**— Conversations —**", ':'.join(headers)]
+        lines = ["**— Conversations —**", '|'.join(headers)]
         
         for conv in data:
             # Get user information from user_data
@@ -510,7 +510,7 @@ class FieldMapper:
             body_text = conv.get('body_text', conv.get('body', ''))
             
             lines.extend([
-                ':'.join(values),
+                '|'.join(values),
                 "",
                 body_text,
                 "---",
@@ -520,7 +520,7 @@ class FieldMapper:
         return '\n'.join(lines)
     
     def _format_attachments_for_parent(self, data: List[Dict[str, Any]], user_data: dict = None) -> str:
-        """Format attachments for parent field storage using colon-separated format."""
+        """Format attachments for parent field storage using pipe-separated format."""
         if not data:
             return ""
         
@@ -530,7 +530,7 @@ class FieldMapper:
             return ""
         
         headers = ["created_at", "updated_at", "attachment_id", "file name", "size", "user_id", "conversation_id"]
-        lines = ["**— Attachment Details —**", ':'.join(headers)]
+        lines = ["**— Attachment Details —**", '|'.join(headers)]
         
         for attachment in data:
             # Get user information from user_data
@@ -565,7 +565,7 @@ class FieldMapper:
                 str(attachment.get('conversation_id', 'N/A'))
             ]
             
-            lines.append(':'.join(values))
+            lines.append('|'.join(values))
         
         return '\n'.join(lines)
     
