@@ -464,8 +464,8 @@ class FieldMapper:
                 str(bcc_emails)
             ]
             
-            # Only use body_text, never body (HTML)
-            body_text = conv.get('body_text', '')
+            # Use body_text if available, otherwise fall back to body
+            body_text = conv.get('body_text', conv.get('body', ''))
             
             lines.extend([
                 ':'.join(values),

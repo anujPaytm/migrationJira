@@ -66,9 +66,10 @@ class TicketConverter:
         # Build description using hierarchical approach
         description_parts = []
         
-        # Add original description if available (only description_text, no HTML)
-        if ticket.get('description_text'):
-            description_parts.append(f"**— Description —**\n{ticket['description_text']}")
+        # Add original description if available (use description_text if available, otherwise fall back to description)
+        description_text = ticket.get('description_text', ticket.get('description', ''))
+        if description_text:
+            description_parts.append(f"**— Description —**\n{description_text}")
         
         # Add unmapped ticket fields to description (only if not mapped to custom fields)
         # Exclude HTML fields and description_text to avoid duplication
