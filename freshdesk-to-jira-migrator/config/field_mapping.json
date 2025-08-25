@@ -207,7 +207,7 @@
       "mapper_function": "map_id_to_string"
     },
     "custom_fields": {
-      "jira_field": null,
+      "jira_field": "customfield_10354",
       "field_type": "custom",
       "mapper_function": "map_custom_fields"
     }
