@@ -405,6 +405,16 @@ class TicketMigrator:
                     self._remove_cleanup_mark(ticket_id)
                     raise attachment_error
                 
+                # Check if any attachments failed - if so, consider the entire ticket failed
+                if attachment_stats['failed'] > 0:
+                    failed_msg = f"Attachment upload failed: {attachment_stats['failed']}/{attachment_stats['total']} attachments failed"
+                    print(f"❌ {failed_msg} for {created_issue.key}")
+                    # Clean up the issue since attachments failed
+                    self._cleanup_orphaned_issue(created_issue.key, ticket_id)
+                    # Remove cleanup mark since we already cleaned up
+                    self._remove_cleanup_mark(ticket_id)
+                    raise Exception(failed_msg)
+                
                 # Update tracker with success (atomic with cleanup mark removal)
                 try:
                     self.tracker.update_ticket_status(
