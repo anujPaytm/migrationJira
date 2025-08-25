@@ -142,6 +142,7 @@ class MigrationLogger:
         self._log_with_emoji('INFO', '   ', f"Success rate: {stats.get('success_rate', 0):.2%}")
         self._log_with_emoji('INFO', '   ', f"Total attachments: {stats.get('total_attachments', 0)}")
         self._log_with_emoji('INFO', '   ', f"Successful attachments: {stats.get('successful_attachments', 0)}")
+        self._log_with_emoji('INFO', '   ', f"Failed attachments: {stats.get('failed_attachments', 0)}")
         self._log_with_emoji('INFO', '   ', f"Attachment success rate: {stats.get('attachment_success_rate', 0):.2%}")
 
 

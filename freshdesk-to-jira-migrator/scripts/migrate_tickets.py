@@ -97,6 +97,7 @@ class TicketMigrator:
             'failed_migrations': 0,
             'total_attachments': 0,
             'successful_attachments': 0,
+            'failed_attachments': 0,
             'orphaned_issues_cleaned': 0
         }
         
@@ -393,8 +394,9 @@ class TicketMigrator:
                 self._mark_issue_for_cleanup(ticket_id, created_issue.key)
                 
                 # Upload attachments
+                attachment_stats = {'total': 0, 'successful': 0, 'failed': 0}
                 try:
-                    self._upload_attachments(created_issue.key, ticket_data)
+                    attachment_stats = self._upload_attachments(created_issue.key, ticket_data)
                 except Exception as attachment_error:
                     print(f"❌ Attachment upload failed for {created_issue.key}: {str(attachment_error)}")
                     # Clean up the issue since attachments failed
@@ -405,7 +407,12 @@ class TicketMigrator:
                 
                 # Update tracker with success (atomic with cleanup mark removal)
                 try:
-                    self.tracker.update_ticket_status(ticket_id, "success", jira_id=created_issue.key)
+                    self.tracker.update_ticket_status(
+                        ticket_id, "success", jira_id=created_issue.key,
+                        total_attachments=attachment_stats['total'],
+                        successful_attachments=attachment_stats['successful'],
+                        failed_attachments=attachment_stats['failed']
+                    )
                     # Remove cleanup mark since we succeeded
                     self._remove_cleanup_mark(ticket_id)
                 except Exception as tracker_error:
@@ -539,23 +546,31 @@ class TicketMigrator:
             
             return (ticket_id, False)
     
-    def _upload_attachments(self, issue_key: str, ticket_data: Dict[str, Any]):
+    def _upload_attachments(self, issue_key: str, ticket_data: Dict[str, Any]) -> Dict[str, int]:
         """
         Upload attachments for a ticket.
         
         Args:
             issue_key: JIRA issue key
             ticket_data: Ticket data dictionary
+            
+        Returns:
+            Dictionary with attachment statistics: {'total': int, 'successful': int, 'failed': int}
         """
+        # Initialize attachment statistics
+        total_attachments = 0
+        successful_attachments = 0
+        failed_attachments = 0
+        
         # Validate ticket_data structure
         if not isinstance(ticket_data, dict):
             print(f"⚠️ Invalid ticket_data type for {issue_key}: {type(ticket_data)}")
-            return
+            return {'total': 0, 'successful': 0, 'failed': 0}
         
         ticket_id = ticket_data.get('ticket_id')
         if ticket_id is None:
             print(f"⚠️ Missing ticket_id in ticket_data for {issue_key}")
-            return
+            return {'total': 0, 'successful': 0, 'failed': 0}
         
         ticket_attachments = ticket_data.get('ticket_attachments', [])
         conversation_attachments = ticket_data.get('conversation_attachments', [])
@@ -578,11 +593,18 @@ class TicketMigrator:
             if attachment_data:
                 results = self.bulk_uploader.upload_attachments_with_renaming(issue_key, attachment_data)
                 successful = sum(results)
+                failed = len(attachment_data) - successful
+                
+                total_attachments += len(attachment_data)
+                successful_attachments += successful
+                failed_attachments += failed
+                
                 print(f"📎 Uploaded {successful}/{len(attachment_data)} ticket attachments")
                 
                 with self.stats_lock:
                     self.stats['total_attachments'] += len(attachment_data)
                     self.stats['successful_attachments'] += successful
+                    self.stats['failed_attachments'] += failed
             else:
                 print("⚠️ No valid ticket attachment files found")
         
@@ -604,13 +626,30 @@ class TicketMigrator:
             if attachment_data:
                 results = self.bulk_uploader.upload_attachments_with_renaming(issue_key, attachment_data)
                 successful = sum(results)
+                failed = len(attachment_data) - successful
+                
+                total_attachments += len(attachment_data)
+                successful_attachments += successful
+                failed_attachments += failed
+                
                 print(f"📎 Uploaded {successful}/{len(attachment_data)} conversation attachments")
                 
                 with self.stats_lock:
                     self.stats['total_attachments'] += len(attachment_data)
                     self.stats['successful_attachments'] += successful
+                    self.stats['failed_attachments'] += failed
             else:
                 print("⚠️ No valid conversation attachment files found")
+        
+        # Log attachment summary for this ticket
+        if total_attachments > 0:
+            self.logger.attachment_upload(ticket_id, total_attachments, successful_attachments)
+        
+        return {
+            'total': total_attachments,
+            'successful': successful_attachments,
+            'failed': failed_attachments
+        }
     
     def migrate_tickets(self, ticket_ids: List[int], dry_run: bool = False, parallel: bool = True) -> Dict[str, Any]:
         """
@@ -716,6 +755,7 @@ class TicketMigrator:
             'success_rate': self.stats['successful_migrations'] / self.stats['total_tickets'] if self.stats['total_tickets'] > 0 else 0,
             'total_attachments': self.stats['total_attachments'],
             'successful_attachments': self.stats['successful_attachments'],
+            'failed_attachments': self.stats['failed_attachments'],
             'attachment_success_rate': self.stats['successful_attachments'] / self.stats['total_attachments'] if self.stats['total_attachments'] > 0 else 0,
             'orphaned_issues_cleaned': self.stats['orphaned_issues_cleaned'],
             'tracker_summary': tracker_summary
