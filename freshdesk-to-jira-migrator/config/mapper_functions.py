@@ -337,12 +337,48 @@ def map_id_to_string(value: Any) -> str:
     return str(value)
 
 
+def map_user_to_system_field(user_id: int, user_data: dict = None) -> dict:
+    """
+    Map user ID to system field format for assignee/reporter.
+    Returns a dictionary with 'name' field for system fields.
+    If user not found, returns None to use default (unassigned).
+    
+    Args:
+        user_id: Freshdesk user ID
+        user_data: User data dictionary containing agents and contacts
+        
+    Returns:
+        Dictionary with 'name' field or None if user not found
+    """
+    if not user_id or not user_data:
+        return None  # Will use default (unassigned)
+    
+    # Search in agents first
+    agents = user_data.get('agents', {})
+    if str(user_id) in agents:
+        agent = agents[str(user_id)]
+        # Agents have contact info nested in 'contact' object
+        if 'contact' in agent and agent['contact'].get('email'):
+            return {"name": agent['contact']['email']}
+    
+    # Search in contacts
+    contacts = user_data.get('contacts', {})
+    if str(user_id) in contacts:
+        contact = contacts[str(user_id)]
+        # Contacts have email directly at the top level
+        if contact.get('email'):
+            return {"name": contact['email']}
+    
+    return None  # Will use default (unassigned)
+
+
 # Registry of all mapper functions for easy lookup
 MAPPER_FUNCTIONS = {
     'map_priority': map_priority,
     'map_status': map_status,
     'map_source': map_source,
     'map_user_from_id': map_user_from_id,
+    'map_user_to_system_field': map_user_to_system_field,
     'extract_emails': extract_emails,
     'extract_tags': extract_tags,
     'format_date': format_date,

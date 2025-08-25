@@ -65,12 +65,16 @@
     "requester_id": {
       "jira_field": "customfield_10292",
       "field_type": "custom",
-      "mapper_function": "map_user_from_id"
+      "mapper_function": "map_user_from_id",
+      "system_field": "reporter",
+      "system_mapper_function": "map_user_to_system_field"
     },
     "responder_id": {
       "jira_field": "customfield_10293",
       "field_type": "custom",
-      "mapper_function": "map_user_from_id"
+      "mapper_function": "map_user_from_id",
+      "system_field": "assignee",
+      "system_mapper_function": "map_user_to_system_field"
     },
     "cc_emails": {
       "jira_field": "customfield_10322",

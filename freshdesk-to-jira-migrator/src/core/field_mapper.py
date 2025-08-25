@@ -128,6 +128,41 @@ class FieldMapper:
         
         return jira_field, mapped_value
     
+    def map_field_value_with_system_field(self, field_name: str, field_value: Any, field_category: str = "ticket_fields", context: dict = None) -> Tuple[Optional[str], Optional[Any], Optional[str], Optional[Any]]:
+        """
+        Map a field value according to its configuration, including system field mapping.
+        
+        Args:
+            field_name: Name of the Freshdesk field
+            field_value: Value of the field
+            field_category: Category of fields
+            context: Additional context for mapper functions (e.g., user_data)
+            
+        Returns:
+            Tuple of (jira_field_name, mapped_value, system_field_name, system_field_value) or (None, None, None, None) if not mapped
+        """
+        mapping = self.get_field_mapping(field_name, field_category)
+        if not mapping:
+            return None, None, None, None
+        
+        jira_field = mapping.get("jira_field")
+        mapper_function = mapping.get("mapper_function")
+        system_field = mapping.get("system_field")
+        system_mapper_function = mapping.get("system_mapper_function")
+        
+        if not jira_field:
+            return None, None, None, None
+        
+        # Apply mapper function if specified
+        mapped_value = apply_mapper_function(mapper_function, field_value, context)
+        
+        # Apply system mapper function if specified
+        system_field_value = None
+        if system_field and system_mapper_function:
+            system_field_value = apply_mapper_function(system_mapper_function, field_value, context)
+        
+        return jira_field, mapped_value, system_field, system_field_value
+    
     def get_unmapped_fields(self, data: Dict[str, Any], field_category: str = "ticket_fields") -> Dict[str, Any]:
         """
         Get fields that don't have mappings and should be added to description.
@@ -203,7 +238,10 @@ class FieldMapper:
         mapped_fields['summary'] = summary
         
         for field_name, field_value in ticket_data.items():
-            jira_field, mapped_value = self.map_field_value(field_name, field_value, "ticket_fields", user_data)
+            # Check if this field has system field mapping
+            jira_field, mapped_value, system_field, system_field_value = self.map_field_value_with_system_field(field_name, field_value, "ticket_fields", user_data)
+            
+            # Handle custom field mapping
             if jira_field and mapped_value is not None:
                 mapped_fields[jira_field] = mapped_value
             elif jira_field and mapped_value is False:  # Allow False boolean values
@@ -218,6 +256,10 @@ class FieldMapper:
                 mapped_fields[jira_field] = mapped_value
             elif jira_field and isinstance(mapped_value, str):  # Allow any string values
                 mapped_fields[jira_field] = mapped_value
+            
+            # Handle system field mapping
+            if system_field and system_field_value is not None:
+                mapped_fields[system_field] = system_field_value
         
         return mapped_fields, unmapped_fields
     
