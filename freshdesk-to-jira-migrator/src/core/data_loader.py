@@ -36,15 +36,21 @@ class DataLoader:
     
     def load_user_details(self) -> Dict[str, Any]:
         """
-        Load all user data (agents and contacts).
+        Load all user data (agents, contacts, groups, products, email configs).
         
         Returns:
-            Dictionary containing agents and contacts data
+            Dictionary containing agents, contacts, groups, products, and email configs data
         """
         if self._user_data is not None:
             return self._user_data
         
-        user_data = {"agents": {}, "contacts": {}}
+        user_data = {
+            "agents": {}, 
+            "contacts": {}, 
+            "groups": {}, 
+            "products": {}, 
+            "email_configs": {}
+        }
         
         # Load agents
         agents_file = self.user_details_dir / "all_agents.json"
@@ -71,6 +77,45 @@ class DataLoader:
                             user_data["contacts"][str(contact['id'])] = contact
             except Exception as e:
                 print(f"Warning: Error loading contacts data: {e}")
+        
+        # Load groups
+        groups_file = self.user_details_dir / "all_groups.json"
+        if groups_file.exists():
+            try:
+                with open(groups_file, 'r', encoding='utf-8') as f:
+                    groups_list = json.load(f)
+                    # Convert to dictionary with ID as key
+                    for group in groups_list:
+                        if 'id' in group:
+                            user_data["groups"][str(group['id'])] = group
+            except Exception as e:
+                print(f"Warning: Error loading groups data: {e}")
+        
+        # Load products
+        products_file = self.user_details_dir / "all_products.json"
+        if products_file.exists():
+            try:
+                with open(products_file, 'r', encoding='utf-8') as f:
+                    products_list = json.load(f)
+                    # Convert to dictionary with ID as key
+                    for product in products_list:
+                        if 'id' in product:
+                            user_data["products"][str(product['id'])] = product
+            except Exception as e:
+                print(f"Warning: Error loading products data: {e}")
+        
+        # Load email configs
+        email_configs_file = self.user_details_dir / "all_email_configs.json"
+        if email_configs_file.exists():
+            try:
+                with open(email_configs_file, 'r', encoding='utf-8') as f:
+                    email_configs_list = json.load(f)
+                    # Convert to dictionary with ID as key
+                    for email_config in email_configs_list:
+                        if 'id' in email_config:
+                            user_data["email_configs"][str(email_config['id'])] = email_config
+            except Exception as e:
+                print(f"Warning: Error loading email configs data: {e}")
         
         self._user_data = user_data
         return user_data
@@ -306,7 +351,10 @@ class DataLoader:
             },
             "user_data": {
                 "total_agents": len(user_data.get("agents", {})),
-                "total_contacts": len(user_data.get("contacts", {}))
+                "total_contacts": len(user_data.get("contacts", {})),
+                "total_groups": len(user_data.get("groups", {})),
+                "total_products": len(user_data.get("products", {})),
+                "total_email_configs": len(user_data.get("email_configs", {}))
             }
         }
         

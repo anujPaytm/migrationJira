@@ -114,7 +114,7 @@
     "group_id": {
       "jira_field": "customfield_10330",
       "field_type": "custom",
-      "mapper_function": "map_id_to_string"
+      "mapper_function": "map_group_id_to_name"
     },
     "company_id": {
       "jira_field": "customfield_10334",
@@ -159,12 +159,12 @@
     "email_config_id": {
       "jira_field": "customfield_10329",
       "field_type": "custom",
-      "mapper_function": "map_id_to_string"
+      "mapper_function": "map_email_config_id_to_name"
     },
     "product_id": {
       "jira_field": "customfield_10338",
       "field_type": "custom",
-      "mapper_function": "map_id_to_string"
+      "mapper_function": "map_product_id_to_name"
     },
     "association_type": {
       "jira_field": "customfield_10335",

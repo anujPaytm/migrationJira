@@ -324,17 +324,86 @@ def map_custom_fields(custom_fields: dict) -> str:
 
 def map_id_to_string(value: Any) -> str:
     """
-    Map ID values to string for Jira.
+    Convert any value to string, preserving leading zeros for IDs.
     
     Args:
-        value: ID value from Freshdesk
+        value: Value to convert
         
     Returns:
-        String value for Jira
+        String representation of the value
     """
     if value is None:
         return ""
     return str(value)
+
+
+def map_group_id_to_name(group_id: Any, user_data: dict = None) -> str:
+    """
+    Map group ID to group name from all_groups.json.
+    
+    Args:
+        group_id: Freshdesk group ID
+        user_data: User data dictionary containing groups
+        
+    Returns:
+        Group name or "unknown" if not found
+    """
+    if not group_id or not user_data:
+        return "unknown"
+    
+    groups = user_data.get('groups', {})
+    group_id_str = str(group_id)
+    
+    if group_id_str in groups:
+        return groups[group_id_str].get('name', 'unknown')
+    
+    return "unknown"
+
+
+def map_product_id_to_name(product_id: Any, user_data: dict = None) -> str:
+    """
+    Map product ID to product name from all_products.json.
+    
+    Args:
+        product_id: Freshdesk product ID
+        user_data: User data dictionary containing products
+        
+    Returns:
+        Product name or "unknown" if not found
+    """
+    if not product_id or not user_data:
+        return "unknown"
+    
+    products = user_data.get('products', {})
+    product_id_str = str(product_id)
+    
+    if product_id_str in products:
+        return products[product_id_str].get('name', 'unknown')
+    
+    return "unknown"
+
+
+def map_email_config_id_to_name(email_config_id: Any, user_data: dict = None) -> str:
+    """
+    Map email config ID to email config name from all_email_configs.json.
+    
+    Args:
+        email_config_id: Freshdesk email config ID
+        user_data: User data dictionary containing email_configs
+        
+    Returns:
+        Email config name or "unknown" if not found
+    """
+    if not email_config_id or not user_data:
+        return "unknown"
+    
+    email_configs = user_data.get('email_configs', {})
+    email_config_id_str = str(email_config_id)
+    
+    if email_config_id_str in email_configs:
+        return email_configs[email_config_id_str].get('name', 'unknown')
+    
+    return "unknown"
 
 
 def map_user_to_system_field(user_id: int, user_data: dict = None) -> dict:
@@ -389,7 +458,10 @@ MAPPER_FUNCTIONS = {
     'map_number': map_number,
     'map_custom_fields': map_custom_fields,
     'map_id_to_string': map_id_to_string,
-    'format_file_size': format_file_size
+    'format_file_size': format_file_size,
+    'map_group_id_to_name': map_group_id_to_name,
+    'map_product_id_to_name': map_product_id_to_name,
+    'map_email_config_id_to_name': map_email_config_id_to_name
 }
 
 
@@ -424,7 +496,15 @@ def apply_mapper_function(function_name: str, value: Any, context: dict = None) 
     mapper_func = get_mapper_function(function_name)
     if mapper_func:
         try:
-            if function_name == 'map_user_from_id' and context:
+            # Functions that require user_data context
+            context_functions = [
+                'map_user_from_id', 
+                'map_group_id_to_name', 
+                'map_product_id_to_name', 
+                'map_email_config_id_to_name'
+            ]
+            
+            if function_name in context_functions and context:
                 return mapper_func(value, context)
             else:
                 return mapper_func(value)
