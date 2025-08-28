@@ -208,29 +208,82 @@ class DataLoader:
             print(f"Error: Invalid JSON in conversation attachments file for ticket {ticket_id}: {e}")
             return []
     
-    def get_attachment_file_path(self, ticket_id: int, filename: str) -> Optional[str]:
+    def get_attachment_file_path(self, ticket_id: int, filename: str, attachment_id: str = None) -> Optional[str]:
         """
         Get the file path for an attachment.
         
         Args:
             ticket_id: Freshdesk ticket ID
             filename: Attachment filename
+            attachment_id: Attachment ID (optional, used for duplicate file resolution)
             
         Returns:
             Full file path or None if not found
         """
-        # Try the original filename first
-        file_path = self.attachments_dir / str(ticket_id) / filename
+        ticket_dir = self.attachments_dir / str(ticket_id)
         
+        def sanitize_filename(name: str) -> str:
+            """Sanitize filename to be safe for filesystem (same as used in extraction)"""
+            # Remove or replace problematic characters
+            invalid_chars = '<>:"/\\|?*'
+            for char in invalid_chars:
+                name = name.replace(char, '_')
+            
+            # Limit length
+            if len(name) > 200:
+                import os
+                name_part, ext = os.path.splitext(name)
+                name = name_part[:200-len(ext)] + ext
+            
+            return name
+        
+        # Try the original filename first
+        file_path = ticket_dir / filename
         if file_path.exists():
             return str(file_path)
         
+        # Try sanitized filename
+        sanitized_filename = sanitize_filename(filename)
+        sanitized_file_path = ticket_dir / sanitized_filename
+        if sanitized_file_path.exists():
+            return str(sanitized_file_path)
+        
         # For conversation attachments, try with 'conv_' prefix
         conv_filename = f"conv_{filename}"
-        conv_file_path = self.attachments_dir / str(ticket_id) / conv_filename
-        
+        conv_file_path = ticket_dir / conv_filename
         if conv_file_path.exists():
             return str(conv_file_path)
+        
+        # Try sanitized conversation filename
+        conv_sanitized_filename = f"conv_{sanitized_filename}"
+        conv_sanitized_file_path = ticket_dir / conv_sanitized_filename
+        if conv_sanitized_file_path.exists():
+            return str(conv_sanitized_file_path)
+        
+        # If attachment_id is provided, try duplicate pattern: filename_attachment_id
+        if attachment_id:
+            duplicate_filename = f"{filename}_{attachment_id}"
+            duplicate_file_path = ticket_dir / duplicate_filename
+            if duplicate_file_path.exists():
+                return str(duplicate_file_path)
+            
+            # Try sanitized duplicate filename
+            sanitized_duplicate_filename = f"{sanitized_filename}_{attachment_id}"
+            sanitized_duplicate_file_path = ticket_dir / sanitized_duplicate_filename
+            if sanitized_duplicate_file_path.exists():
+                return str(sanitized_duplicate_file_path)
+            
+            # Also try with conv_ prefix for conversation duplicates
+            conv_duplicate_filename = f"conv_{filename}_{attachment_id}"
+            conv_duplicate_file_path = ticket_dir / conv_duplicate_filename
+            if conv_duplicate_file_path.exists():
+                return str(conv_duplicate_file_path)
+            
+            # Try sanitized conv duplicate filename
+            conv_sanitized_duplicate_filename = f"conv_{sanitized_filename}_{attachment_id}"
+            conv_sanitized_duplicate_file_path = ticket_dir / conv_sanitized_duplicate_filename
+            if conv_sanitized_duplicate_file_path.exists():
+                return str(conv_sanitized_duplicate_file_path)
         
         return None
     
@@ -249,7 +302,7 @@ class DataLoader:
         
         for file_path in self.ticket_details_dir.glob("ticket_*_details.json"):
             try:
-                # Extract ticket ID from filename like "ticket_52_details.json"
+                # Extract ticket ID from filename like "ticket_52_details"
                 filename = file_path.stem  # "ticket_52_details"
                 ticket_id_str = filename.replace("ticket_", "").replace("_details", "")
                 ticket_id = int(ticket_id_str)

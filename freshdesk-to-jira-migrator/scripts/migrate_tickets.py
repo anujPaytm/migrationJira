@@ -593,11 +593,12 @@ class TicketMigrator:
             
             for attachment in ticket_attachments:
                 filename = attachment.get('name', '')
-                file_path = self.data_loader.get_attachment_file_path(ticket_id, filename)
+                attachment_id = attachment.get('id', '')
+                file_path = self.data_loader.get_attachment_file_path(ticket_id, filename, attachment_id)
                 if file_path:
                     attachment_data.append({
                         'file_path': file_path,
-                        'attachment_id': attachment.get('id', ''),
+                        'attachment_id': attachment_id,
                         'original_name': filename
                     })
             
@@ -626,11 +627,12 @@ class TicketMigrator:
             
             for attachment in conversation_attachments:
                 filename = attachment.get('name', '')
-                file_path = self.data_loader.get_attachment_file_path(ticket_id, filename)
+                attachment_id = attachment.get('id', '')
+                file_path = self.data_loader.get_attachment_file_path(ticket_id, filename, attachment_id)
                 if file_path:
                     attachment_data.append({
                         'file_path': file_path,
-                        'attachment_id': attachment.get('id', ''),
+                        'attachment_id': attachment_id,
                         'original_name': filename
                     })
             
