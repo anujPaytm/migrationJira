@@ -8,20 +8,26 @@
     },
     "conversation_fields": {
       "jira_field": "customfield_10352",
+      "jira_field_name": "FD_Conversation_Details",
       "field_type": "custom",
       "mapper_function": null,
       "description": "All conversation data",
       "overflow_fields": ["customfield_10355"],
+      "overflow_field_names": ["FD_Conversation_Details2"],
       "additional_overflow_fields": ["customfield_10357", "customfield_10358", "customfield_10359", "customfield_10360", "customfield_10361", "customfield_10362", "customfield_10363", "customfield_10364", "customfield_10365", "customfield_10366"],
+      "additional_overflow_field_names": ["FD_Additional_Info1", "FD_Additional_Info2", "FD_Additional_Info3", "FD_Additional_Info4", "FD_Additional_Info5", "FD_Additional_Info6", "FD_Additional_Info7", "FD_Additional_Info8", "FD_Additional_Info9", "FD_Additional_Info10"],
       "max_length": 32000
     },
     "attachment_fields": {
       "jira_field": "customfield_10353",
+      "jira_field_name": "FD_Attachment_Details",
       "field_type": "custom",
       "mapper_function": null,
       "description": "All attachment details",
       "overflow_fields": ["customfield_10356"],
+      "overflow_field_names": ["FD_Conversation_Details3"],
       "additional_overflow_fields": ["customfield_10357", "customfield_10358", "customfield_10359", "customfield_10360", "customfield_10361", "customfield_10362", "customfield_10363", "customfield_10364", "customfield_10365", "customfield_10366"],
+      "additional_overflow_field_names": ["FD_Additional_Info1", "FD_Additional_Info2", "FD_Additional_Info3", "FD_Additional_Info4", "FD_Additional_Info5", "FD_Additional_Info6", "FD_Additional_Info7", "FD_Additional_Info8", "FD_Additional_Info9", "FD_Additional_Info10"],
       "max_length": 32000
     },
     "user_fields": {
@@ -34,36 +40,43 @@
   "ticket_fields": {
     "subject": {
       "jira_field": "summary",
+      "jira_field_name": "Summary",
       "field_type": "system",
       "mapper_function": null
     },
     "priority": {
       "jira_field": "customfield_10289",
+      "jira_field_name": "FD_Priority",
       "field_type": "custom",
       "mapper_function": "map_priority"
     },
     "status": {
       "jira_field": "customfield_10294",
+      "jira_field_name": "FD_Status",
       "field_type": "custom",
       "mapper_function": "map_status"
     },
     "type": {
       "jira_field": "customfield_10295",
+      "jira_field_name": "FD_IssueType",
       "field_type": "custom",
       "mapper_function": null
     },
     "created_at": {
       "jira_field": "customfield_10290",
+      "jira_field_name": "FD_Created_At",
       "field_type": "custom",
       "mapper_function": "format_date"
     },
     "updated_at": {
       "jira_field": "customfield_10291",
+      "jira_field_name": "FD_Updated_At",
       "field_type": "custom",
       "mapper_function": "format_date"
     },
     "requester_id": {
       "jira_field": "customfield_10292",
+      "jira_field_name": "FD_Reporter",
       "field_type": "custom",
       "mapper_function": "map_user_from_id",
       "system_field": "reporter",
@@ -71,6 +84,7 @@
     },
     "responder_id": {
       "jira_field": "customfield_10293",
+      "jira_field_name": "FD_Assignee",
       "field_type": "custom",
       "mapper_function": "map_user_from_id",
       "system_field": "assignee",
@@ -78,136 +92,163 @@
     },
     "cc_emails": {
       "jira_field": "customfield_10322",
+      "jira_field_name": "FD_CC_Emails",
       "field_type": "custom",
       "mapper_function": "extract_emails"
     },
     "fwd_emails": {
       "jira_field": "customfield_10323",
+      "jira_field_name": "FD_FWD_Emails",
       "field_type": "custom",
       "mapper_function": "extract_emails"
     },
     "reply_cc_emails": {
       "jira_field": "customfield_10324",
+      "jira_field_name": "FD_Reply_CC_Emails",
       "field_type": "custom",
       "mapper_function": "extract_emails"
     },
     "ticket_cc_emails": {
       "jira_field": "customfield_10325",
+      "jira_field_name": "FD_Ticket_CC_Emails",
       "field_type": "custom",
       "mapper_function": "extract_emails"
     },
     "ticket_bcc_emails": {
       "jira_field": "customfield_10326",
+      "jira_field_name": "FD_Ticket_BCC_Emails",
       "field_type": "custom",
       "mapper_function": "extract_emails"
     },
     "to_emails": {
       "jira_field": "customfield_10337",
+      "jira_field_name": "FD_To_Emails",
       "field_type": "custom",
       "mapper_function": "extract_emails"
     },
     "support_email": {
       "jira_field": "customfield_10336",
+      "jira_field_name": "FD_Support_Email",
       "field_type": "custom",
       "mapper_function": null
     },
     "group_id": {
       "jira_field": "customfield_10330",
+      "jira_field_name": "FD_Group",
       "field_type": "custom",
       "mapper_function": "map_group_id_to_name"
     },
     "company_id": {
       "jira_field": "customfield_10334",
+      "jira_field_name": "FD_Company_ID",
       "field_type": "custom",
       "mapper_function": "map_id_to_string"
     },
     "source": {
       "jira_field": "customfield_10333",
+      "jira_field_name": "FD_Source",
       "field_type": "custom",
       "mapper_function": "map_source"
     },
     "source_additional_info": {
       "jira_field": "customfield_10346",
+      "jira_field_name": "FD_Source_Additional_Info",
       "field_type": "custom",
       "mapper_function": null
     },
     "due_by": {
       "jira_field": "customfield_10342",
+      "jira_field_name": "FD_Due_By",
       "field_type": "custom",
       "mapper_function": "format_date"
     },
     "fr_due_by": {
       "jira_field": "customfield_10343",
+      "jira_field_name": "FD_FR_Due_By",
       "field_type": "custom",
       "mapper_function": "format_date"
     },
     "is_escalated": {
       "jira_field": "customfield_10344",
+      "jira_field_name": "FD_Is_Escalated",
       "field_type": "custom",
       "mapper_function": "map_boolean"
     },
     "fr_escalated": {
       "jira_field": "customfield_10327",
+      "jira_field_name": "FD_FR_Escalated",
       "field_type": "custom",
       "mapper_function": "map_boolean"
     },
     "spam": {
       "jira_field": "customfield_10328",
+      "jira_field_name": "FD_Spam",
       "field_type": "custom",
       "mapper_function": "map_boolean"
     },
     "email_config_id": {
       "jira_field": "customfield_10329",
+      "jira_field_name": "FD_Email_Config",
       "field_type": "custom",
       "mapper_function": "map_email_config_id_to_name"
     },
     "product_id": {
       "jira_field": "customfield_10338",
+      "jira_field_name": "FD_Product",
       "field_type": "custom",
       "mapper_function": "map_product_id_to_name"
     },
     "association_type": {
       "jira_field": "customfield_10335",
+      "jira_field_name": "FD_Association_Type",
       "field_type": "custom",
       "mapper_function": null
     },
     "tags": {
       "jira_field": "customfield_10345",
+      "jira_field_name": "FD_Tags",
       "field_type": "custom",
       "mapper_function": "extract_tags"
     },
     "sentiment_score": {
       "jira_field": "customfield_10348",
+      "jira_field_name": "FD_Sentiment_Score",
       "field_type": "custom",
       "mapper_function": "map_number"
     },
     "initial_sentiment_score": {
       "jira_field": "customfield_10349",
+      "jira_field_name": "FD_Initial_Sentiment_Score",
       "field_type": "custom",
       "mapper_function": "map_number"
     },
     "structured_description": {
       "jira_field": "customfield_10347",
+      "jira_field_name": "FD_Structured_Description",
       "field_type": "custom",
       "mapper_function": null
     },
     "nr_due_by": {
       "jira_field": "customfield_10350",
+      "jira_field_name": "FD_NR_Due_By",
       "field_type": "custom",
       "mapper_function": "format_date"
     },
     "nr_escalated": {
       "jira_field": "customfield_10351",
+      "jira_field_name": "FD_NR_Escalated",
       "field_type": "custom",
       "mapper_function": "map_boolean"
     },
     "ticket_id": {
       "jira_field": "customfield_10339",
+      "jira_field_name": "FD_Ticket_ID",
       "field_type": "custom",
       "mapper_function": "map_id_to_string"
     },
     "custom_fields": {
       "jira_field": "customfield_10354",
+      "jira_field_name": "FD_Custom_Fields",
       "field_type": "custom",
       "mapper_function": "map_custom_fields"
     }

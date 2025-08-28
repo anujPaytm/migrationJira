@@ -17,8 +17,7 @@ A modular, configurable migration tool to transfer tickets from Freshdesk to JIR
 ```
 freshdesk-to-jira-migrator/
 ├── config/
-│   ├── field_mapping.json          # Main field mapping configuration
-│   ├── jira_custom_fields.json     # JIRA custom field definitions
+│   ├── field_mapping.json          # Main field mapping configuration (single source of truth)
 │   └── mapper_functions.py         # Custom field transformation functions
 ├── src/
 │   ├── core/
@@ -239,20 +238,21 @@ data_to_be_migrated/
 
 ### Configuring Custom Fields
 
-Edit `config/jira_custom_fields.json` to define JIRA custom field mappings:
+All field mappings are defined in `config/field_mapping.json`. This file serves as the single source of truth for all JIRA field configurations:
 
 ```json
 {
-  "custom_fields": {
-    "FD_new_field": {
-      "id": "customfield_10058",
-      "name": "New Field",
-      "type": "text",
-      "description": "Description of the field"
+  "ticket_fields": {
+    "new_field": {
+      "jira_field": "customfield_10058",
+      "field_type": "custom",
+      "mapper_function": "custom_mapper"
     }
   }
 }
 ```
+
+**Note**: The `jira_field` value should be the actual JIRA custom field ID (e.g., `customfield_10058`). You can find these IDs in your JIRA instance under Project Settings > Custom Fields.
 
 ## 📈 Performance
 
