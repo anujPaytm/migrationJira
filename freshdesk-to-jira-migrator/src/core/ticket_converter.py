@@ -269,9 +269,13 @@ class TicketConverter:
         
         Args:
             jira_issue: JIRA issue dictionary
-            issue_type: Issue type name
+            issue_type: Issue type name or ID
         """
-        jira_issue["fields"]["issuetype"]["name"] = issue_type
+        # Check if issue_type is a numeric ID
+        if issue_type.isdigit():
+            jira_issue["fields"]["issuetype"]["id"] = issue_type
+        else:
+            jira_issue["fields"]["issuetype"]["name"] = issue_type
     
     def add_custom_field(self, jira_issue: Dict[str, Any], field_name: str, field_value: Any):
         """

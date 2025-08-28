@@ -47,6 +47,7 @@ class JiraConfig:
         self.email = os.getenv('JIRA_EMAIL')
         self.api_token = os.getenv('JIRA_API_TOKEN')
         self.project_key = os.getenv('JIRA_PROJECT_KEY', 'FTJM')
+        self.issue_type = os.getenv('JIRA_ISSUE_TYPE', 'FD_Migration')
         
         if not all([self.domain, self.email, self.api_token]):
             raise ValueError("Missing required JIRA environment variables")
@@ -343,8 +344,9 @@ class TicketMigrator:
                 user_data=ticket_data['user_data']
             )
             
-            # Set project key
+            # Set project key and issue type
             self.ticket_converter.set_project_key(jira_issue, self.config.project_key)
+            self.ticket_converter.set_issue_type(jira_issue, self.config.issue_type)
             
             if dry_run:
                 print(f"✅ Dry run - would create issue for ticket {ticket_id}")

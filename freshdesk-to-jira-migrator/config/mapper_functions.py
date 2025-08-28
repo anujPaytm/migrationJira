@@ -169,6 +169,28 @@ def format_date(date_string: str) -> str:
         return date_string
 
 
+def format_date_to_datetime(date_string: str) -> Optional[str]:
+    """
+    Convert Freshdesk datetime string to Jira datetime format string.
+    
+    Args:
+        date_string: ISO format date string from Freshdesk
+        
+    Returns:
+        Jira datetime string format (YYYY-MM-DDTHH:MM:SS.000+0000) or None if invalid
+    """
+    if not date_string:
+        return None
+    
+    try:
+        # Parse ISO format date
+        dt = datetime.fromisoformat(date_string.replace('Z', '+00:00'))
+        # Return in Jira datetime format: YYYY-MM-DDTHH:MM:SS.000+0000
+        return dt.strftime('%Y-%m-%dT%H:%M:%S.000+0000')
+    except (ValueError, AttributeError):
+        return None
+
+
 def join_list(list_data: List[Any]) -> str:
     """
     Join list items into a comma-separated string.
@@ -301,6 +323,24 @@ def map_number(value: Any) -> str:
     except (ValueError, TypeError):
         return ""
 
+
+def map_number_to_int(value: Any) -> Optional[int]:
+    """
+    Map number values to integer for Jira number fields.
+    
+    Args:
+        value: Number value from Freshdesk
+        
+    Returns:
+        Integer value for Jira or None if invalid
+    """
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return None
+
 def map_custom_fields(custom_fields: dict) -> str:
     """
     Map custom fields to a string representation.
@@ -406,18 +446,18 @@ def map_email_config_id_to_name(email_config_id: Any, user_data: dict = None) ->
     return "unknown"
 
 
-def map_user_to_system_field(user_id: int, user_data: dict = None) -> dict:
+def map_user_to_system_field(user_id: int, user_data: dict = None) -> str:
     """
     Map user ID to system field format for assignee/reporter.
-    Returns a dictionary with 'name' field for system fields.
-    If user not found, returns None to use default (unassigned).
+    Returns the email string for system fields.
+    If user not found, returns "unknown" for assignee.
     
     Args:
         user_id: Freshdesk user ID
         user_data: User data dictionary containing agents and contacts
         
     Returns:
-        Dictionary with 'name' field or None if user not found
+        Email string or "unknown" if user not found
     """
     if not user_id or not user_data:
         return None  # Will use default (unassigned)
@@ -428,7 +468,7 @@ def map_user_to_system_field(user_id: int, user_data: dict = None) -> dict:
         agent = agents[str(user_id)]
         # Agents have contact info nested in 'contact' object
         if 'contact' in agent and agent['contact'].get('email'):
-            return {"name": agent['contact']['email']}
+            return agent['contact']['email']
     
     # Search in contacts
     contacts = user_data.get('contacts', {})
@@ -436,9 +476,35 @@ def map_user_to_system_field(user_id: int, user_data: dict = None) -> dict:
         contact = contacts[str(user_id)]
         # Contacts have email directly at the top level
         if contact.get('email'):
-            return {"name": contact['email']}
+            return contact['email']
     
-    return None  # Will use default (unassigned)
+    # User not found - return "unknown" for assignee
+    return "unknown"
+
+
+def map_status_to_system_field(freshdesk_status: int, user_data: dict = None) -> dict:
+    """
+    Map Freshdesk status to Jira system status field.
+    Maps Freshdesk status values to Jira status names.
+    
+    Args:
+        freshdesk_status: Freshdesk status value
+        user_data: Not used but kept for consistency
+        
+    Returns:
+        Dictionary with 'name' field for Jira status
+    """
+    status_mapping = {
+        2: "Open",
+        3: "In Progress",  # Map Pending to In Progress for Jira
+        4: "Resolved", 
+        5: "Closed",
+        6: "Waiting for support",  # Map Waiting on Customer to Waiting for support
+        7: "Waiting for customer"  # Map Waiting on Third Party to Waiting for customer
+    }
+    
+    jira_status = status_mapping.get(freshdesk_status, "Open")  # Default to Open
+    return {"name": jira_status}
 
 
 # Registry of all mapper functions for easy lookup
@@ -448,14 +514,17 @@ MAPPER_FUNCTIONS = {
     'map_source': map_source,
     'map_user_from_id': map_user_from_id,
     'map_user_to_system_field': map_user_to_system_field,
+    'map_status_to_system_field': map_status_to_system_field,
     'extract_emails': extract_emails,
     'extract_tags': extract_tags,
     'format_date': format_date,
+    'format_date_to_datetime': format_date_to_datetime,
     'join_list': join_list,
     'truncate_text': truncate_text,
     'clean_html': clean_html,
     'map_boolean': map_boolean,
     'map_number': map_number,
+    'map_number_to_int': map_number_to_int,
     'map_custom_fields': map_custom_fields,
     'map_id_to_string': map_id_to_string,
     'format_file_size': format_file_size,
@@ -499,6 +568,7 @@ def apply_mapper_function(function_name: str, value: Any, context: dict = None) 
             # Functions that require user_data context
             context_functions = [
                 'map_user_from_id', 
+                'map_user_to_system_field',
                 'map_group_id_to_name', 
                 'map_product_id_to_name', 
                 'map_email_config_id_to_name'
