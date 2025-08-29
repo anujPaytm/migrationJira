@@ -102,6 +102,10 @@ class TicketMigrator:
             'orphaned_issues_cleaned': 0
         }
         
+        # Track processed tickets to avoid double-counting
+        self.processed_tickets = set()
+        self.processed_lock = threading.Lock()
+        
         # Atomic operation tracking
         self.atomic_lock = threading.Lock()
         self.pending_issues = {}  # ticket_id -> issue_key for cleanup
@@ -218,7 +222,8 @@ class TicketMigrator:
                 self.logger.warning(f"Issue {issue_key} doesn't exist, skipping cleanup")
                 return True  # Consider this a successful cleanup
             
-            jira.delete_issue(issue_key)
+            issue = jira.issue(issue_key)
+            issue.delete()
             self.logger.success(f"Successfully deleted orphaned issue {issue_key}")
             
             with self.stats_lock:
@@ -228,6 +233,8 @@ class TicketMigrator:
             
         except Exception as e:
             self.logger.error(f"Failed to cleanup orphaned issue {issue_key}: {str(e)}")
+            # Log additional details for debugging
+            self.logger.error(f"Cleanup failure details - Issue: {issue_key}, Ticket: {ticket_id}, Error: {type(e).__name__}")
             return False
     
     def _mark_issue_for_cleanup(self, ticket_id: int, issue_key: str):
@@ -251,6 +258,29 @@ class TicketMigrator:
         with self.atomic_lock:
             self.pending_issues.pop(ticket_id, None)
     
+    def _is_ticket_processed(self, ticket_id: int) -> bool:
+        """
+        Check if a ticket has already been processed to avoid double-counting.
+        
+        Args:
+            ticket_id: Freshdesk ticket ID
+            
+        Returns:
+            True if already processed, False otherwise
+        """
+        with self.processed_lock:
+            return ticket_id in self.processed_tickets
+    
+    def _mark_ticket_processed(self, ticket_id: int):
+        """
+        Mark a ticket as processed to avoid double-counting.
+        
+        Args:
+            ticket_id: Freshdesk ticket ID
+        """
+        with self.processed_lock:
+            self.processed_tickets.add(ticket_id)
+    
     def _cleanup_pending_issues(self):
         """
         Clean up all pending issues that weren't successfully completed.
@@ -261,8 +291,18 @@ class TicketMigrator:
         
         if pending:
             self.logger.info(f"Cleaning up {len(pending)} pending issues...")
+            cleanup_failures = []
             for ticket_id, issue_key in pending.items():
-                self._cleanup_orphaned_issue(issue_key, ticket_id)
+                success = self._cleanup_orphaned_issue(issue_key, ticket_id)
+                if not success:
+                    cleanup_failures.append((ticket_id, issue_key))
+            
+            if cleanup_failures:
+                self.logger.warning(f"Failed to cleanup {len(cleanup_failures)} orphaned issues:")
+                for ticket_id, issue_key in cleanup_failures:
+                    self.logger.warning(f"  - Ticket {ticket_id}: {issue_key}")
+            else:
+                self.logger.success(f"Successfully cleaned up all {len(pending)} pending issues")
     
     def validate_setup(self) -> bool:
         """
@@ -440,6 +480,9 @@ class TicketMigrator:
                 with self.stats_lock:
                     self.stats['successful_migrations'] += 1
                 
+                # Mark ticket as processed to avoid double-counting
+                self._mark_ticket_processed(ticket_id)
+                
                 return True
                 
             except Exception as e:
@@ -615,10 +658,12 @@ class TicketMigrator:
                 
                 self.logger.info(f"Uploaded {successful}/{len(attachment_data)} ticket attachments")
                 
-                with self.stats_lock:
-                    self.stats['total_attachments'] += len(attachment_data)
-                    self.stats['successful_attachments'] += successful
-                    self.stats['failed_attachments'] += failed
+                # Only update stats if this ticket hasn't been processed before
+                if not self._is_ticket_processed(ticket_id):
+                    with self.stats_lock:
+                        self.stats['total_attachments'] += len(attachment_data)
+                        self.stats['successful_attachments'] += successful
+                        self.stats['failed_attachments'] += failed
         else:
             self.logger.warning("No valid ticket attachment files found")
         
@@ -649,10 +694,12 @@ class TicketMigrator:
                 
                 self.logger.info(f"Uploaded {successful}/{len(attachment_data)} conversation attachments")
                 
-                with self.stats_lock:
-                    self.stats['total_attachments'] += len(attachment_data)
-                    self.stats['successful_attachments'] += successful
-                    self.stats['failed_attachments'] += failed
+                # Only update stats if this ticket hasn't been processed before
+                if not self._is_ticket_processed(ticket_id):
+                    with self.stats_lock:
+                        self.stats['total_attachments'] += len(attachment_data)
+                        self.stats['successful_attachments'] += successful
+                        self.stats['failed_attachments'] += failed
         else:
             self.logger.warning("No valid conversation attachment files found")
         
