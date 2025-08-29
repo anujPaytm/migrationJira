@@ -71,8 +71,8 @@ class TicketMigrator:
         self.config = config
         self.max_workers = max_workers
         
-        # Initialize logger
-        self.logger = get_logger(log_file, "INFO")
+        # Initialize logger with DEBUG level to capture all messages
+        self.logger = get_logger(log_file, "DEBUG")
         
         # Rate limiting
         self.rate_limit_lock = threading.Lock()
@@ -193,7 +193,7 @@ class TicketMigrator:
             return "\n".join(result)
             
         except Exception as e:
-            print(f"⚠️  Error extracting failed field data: {str(e)}")
+            self.logger.error(f"Error extracting failed field data: {str(e)}")
             return ""
     
     def _cleanup_orphaned_issue(self, issue_key: str, ticket_id: int) -> bool:
@@ -208,18 +208,18 @@ class TicketMigrator:
             True if cleanup successful, False otherwise
         """
         try:
-            print(f"🧹 Cleaning up orphaned issue {issue_key} for ticket {ticket_id}...")
+            self.logger.info(f"Cleaning up orphaned issue {issue_key} for ticket {ticket_id}...")
             jira = self._get_jira_client()
             
             # Check if issue exists before trying to delete
             try:
                 jira.issue(issue_key)
             except Exception:
-                print(f"⚠️ Issue {issue_key} doesn't exist, skipping cleanup")
+                self.logger.warning(f"Issue {issue_key} doesn't exist, skipping cleanup")
                 return True  # Consider this a successful cleanup
             
             jira.delete_issue(issue_key)
-            print(f"✅ Successfully deleted orphaned issue {issue_key}")
+            self.logger.success(f"Successfully deleted orphaned issue {issue_key}")
             
             with self.stats_lock:
                 self.stats['orphaned_issues_cleaned'] += 1
@@ -227,7 +227,7 @@ class TicketMigrator:
             return True
             
         except Exception as e:
-            print(f"❌ Failed to cleanup orphaned issue {issue_key}: {str(e)}")
+            self.logger.error(f"Failed to cleanup orphaned issue {issue_key}: {str(e)}")
             return False
     
     def _mark_issue_for_cleanup(self, ticket_id: int, issue_key: str):
@@ -260,7 +260,7 @@ class TicketMigrator:
             self.pending_issues.clear()
         
         if pending:
-            print(f"🧹 Cleaning up {len(pending)} pending issues...")
+            self.logger.info(f"Cleaning up {len(pending)} pending issues...")
             for ticket_id, issue_key in pending.items():
                 self._cleanup_orphaned_issue(issue_key, ticket_id)
     
@@ -313,29 +313,29 @@ class TicketMigrator:
         Returns:
             True if successful, False otherwise
         """
-        print(f"🔄 Starting migration for ticket {ticket_id}")
+        self.logger.migration_start(ticket_id)
         
         # Check if ticket is already processed
         existing_status = self.tracker.get_ticket_status(ticket_id)
         if existing_status and existing_status.get('jira_status') in ['success', 'dry_run_completed']:
-            print(f"⏭️  Skipping ticket {ticket_id} - already processed (status: {existing_status.get('jira_status')})")
+            self.logger.info(f"Skipping ticket {ticket_id} - already processed (status: {existing_status.get('jira_status')})")
             return True
         
         try:
             # Load ticket data
-            print(f"📂 Loading ticket data for {ticket_id}...")
+            self.logger.info(f"Loading ticket data for {ticket_id}...")
             ticket_data = self.data_loader.load_ticket_data(ticket_id)
             
             if not ticket_data['ticket_details']:
                 error_msg = f"No ticket details found for ticket {ticket_id}"
-                print(f"❌ {error_msg}")
+                self.logger.error(error_msg)
                 self.tracker.update_ticket_status(ticket_id, "failed", reason=error_msg)
                 with self.stats_lock:
                     self.stats['failed_migrations'] += 1
                 return False
             
             # Convert to JIRA issue
-            print(f"🔄 Converting ticket {ticket_id} to JIRA format...")
+            self.logger.info(f"Converting ticket {ticket_id} to JIRA format...")
             jira_issue = self.ticket_converter.convert_to_jira_issue(
                 ticket=ticket_data['ticket_details'],
                 conversations=ticket_data['conversations'],
@@ -349,7 +349,7 @@ class TicketMigrator:
             self.ticket_converter.set_issue_type(jira_issue, self.config.issue_type)
             
             if dry_run:
-                print(f"✅ Dry run - would create issue for ticket {ticket_id}")
+                self.logger.success(f"Dry run - would create issue for ticket {ticket_id}")
                 self.tracker.update_ticket_status(ticket_id, "dry_run_completed")
                 with self.stats_lock:
                     self.stats['successful_migrations'] += 1
@@ -360,7 +360,7 @@ class TicketMigrator:
             
         except Exception as e:
             error_msg = f"Failed to migrate ticket {ticket_id}: {str(e)}"
-            print(f"❌ {error_msg}")
+            self.logger.error(error_msg)
             
             # Update tracker with failure
             self.tracker.update_ticket_status(ticket_id, "failed", reason=error_msg)
@@ -387,7 +387,7 @@ class TicketMigrator:
         
         for attempt in range(max_retries):
             try:
-                print(f"🚀 Creating JIRA issue for ticket {ticket_id} (attempt {attempt + 1}/{max_retries})...")
+                self.logger.info(f"Creating JIRA issue for ticket {ticket_id} (attempt {attempt + 1}/{max_retries})...")
                 
                 # Try to create the issue
                 created_issue = self._create_jira_issue_single_attempt(ticket_id, jira_issue)
@@ -400,7 +400,7 @@ class TicketMigrator:
                 try:
                     attachment_stats = self._upload_attachments(created_issue.key, ticket_data)
                 except Exception as attachment_error:
-                    print(f"❌ Attachment upload failed for {created_issue.key}: {str(attachment_error)}")
+                    self.logger.error(f"Attachment upload failed for {created_issue.key}: {str(attachment_error)}")
                     # Clean up the issue since attachments failed
                     self._cleanup_orphaned_issue(created_issue.key, ticket_id)
                     # Remove cleanup mark since we already cleaned up
@@ -410,7 +410,7 @@ class TicketMigrator:
                 # Check if any attachments failed - if so, consider the entire ticket failed
                 if attachment_stats['failed'] > 0:
                     failed_msg = f"Attachment upload failed: {attachment_stats['failed']}/{attachment_stats['total']} attachments failed"
-                    print(f"❌ {failed_msg} for {created_issue.key}")
+                    self.logger.error(f"{failed_msg} for {created_issue.key}")
                     # Clean up the issue since attachments failed
                     self._cleanup_orphaned_issue(created_issue.key, ticket_id)
                     # Remove cleanup mark since we already cleaned up
@@ -429,14 +429,14 @@ class TicketMigrator:
                     # Remove cleanup mark since we succeeded
                     self._remove_cleanup_mark(ticket_id)
                 except Exception as tracker_error:
-                    print(f"❌ Tracker update failed for {created_issue.key}: {str(tracker_error)}")
+                    self.logger.error(f"Tracker update failed for {created_issue.key}: {str(tracker_error)}")
                     # Clean up the issue since tracker update failed
                     self._cleanup_orphaned_issue(created_issue.key, ticket_id)
                     # Remove cleanup mark since we already cleaned up
                     self._remove_cleanup_mark(ticket_id)
                     raise tracker_error
                 
-                print(f"✅ Successfully migrated ticket {ticket_id} to {created_issue.key}")
+                self.logger.migration_success(ticket_id, created_issue.key)
                 with self.stats_lock:
                     self.stats['successful_migrations'] += 1
                 
@@ -444,7 +444,7 @@ class TicketMigrator:
                 
             except Exception as e:
                 error_msg = str(e)
-                print(f"❌ Attempt {attempt + 1}/{max_retries} failed for ticket {ticket_id}: {error_msg}")
+                self.logger.error(f"Attempt {attempt + 1}/{max_retries} failed for ticket {ticket_id}: {error_msg}")
                 
                 # Clean up any created issue
                 if created_issue:
@@ -453,13 +453,13 @@ class TicketMigrator:
                 
                 if attempt < max_retries - 1:
                     # Not the last attempt, wait and retry
-                    print(f"⏳ Waiting {retry_delay} seconds before retry...")
+                    self.logger.info(f"Waiting {retry_delay} seconds before retry...")
                     time.sleep(retry_delay)
                     retry_delay *= 2  # Exponential backoff
                 else:
                     # Last attempt failed, mark as failed
                     final_error_msg = f"Failed to migrate ticket {ticket_id} after {max_retries} attempts: {error_msg}"
-                    print(f"❌ {final_error_msg}")
+                    self.logger.error(final_error_msg)
                     
                     # Update tracker with failure
                     self.tracker.update_ticket_status(ticket_id, "failed", reason=final_error_msg)
@@ -487,12 +487,12 @@ class TicketMigrator:
         try:
             jira = self._get_jira_client()
             issue = jira.create_issue(fields=jira_issue['fields'])
-            print(f"✅ Successfully created JIRA issue: {issue.key}")
+            self.logger.success(f"Successfully created JIRA issue: {issue.key}")
             return issue
             
         except Exception as e:
             error_msg = str(e)
-            print(f"❌ JIRA API error for ticket {ticket_id}: {error_msg}")
+            self.logger.error(f"JIRA API error for ticket {ticket_id}: {error_msg}")
             
             # Parse JIRA API error to extract problematic field IDs
             import re
@@ -500,14 +500,14 @@ class TicketMigrator:
             failed_fields = re.findall(field_pattern, error_msg)
             
             if failed_fields and ("cannot be set" in error_msg or "field" in error_msg.lower()):
-                print(f"🔄 Attempting to handle field mapping failure for ticket {ticket_id}...")
-                print(f"🔍 Identified failed fields: {failed_fields}")
+                self.logger.info(f"Attempting to handle field mapping failure for ticket {ticket_id}...")
+                self.logger.info(f"Identified failed fields: {failed_fields}")
                 
                 # Remove failed fields from JIRA issue
                 for field_id in failed_fields:
                     if field_id in jira_issue['fields']:
                         del jira_issue['fields'][field_id]
-                        print(f"🗑️  Removed failed field: {field_id}")
+                        self.logger.info(f"Removed failed field: {field_id}")
                 
                 # Add failed fields to description
                 failed_data = self._extract_failed_field_data(ticket_id, failed_fields)
@@ -515,19 +515,19 @@ class TicketMigrator:
                     current_description = jira_issue['fields'].get('description', '')
                     new_description = current_description + '\n\n' + failed_data
                     jira_issue['fields']['description'] = new_description
-                    print(f"📝 Added failed fields to description")
+                    self.logger.info(f"Added failed fields to description")
                 
                 # Retry creating the issue with fixed fields
                 try:
-                    print(f"🔄 Retrying JIRA issue creation for ticket {ticket_id}...")
+                    self.logger.info(f"Retrying JIRA issue creation for ticket {ticket_id}...")
                     jira = self._get_jira_client()
                     issue = jira.create_issue(fields=jira_issue['fields'])
-                    print(f"✅ Successfully created JIRA issue after field mapping fix: {issue.key}")
+                    self.logger.success(f"Successfully created JIRA issue after field mapping fix: {issue.key}")
                     return issue
                     
                 except Exception as retry_e:
                     retry_error_msg = str(retry_e)
-                    print(f"❌ Failed to create JIRA issue after field mapping fix for ticket {ticket_id}: {retry_error_msg}")
+                    self.logger.error(f"Failed to create JIRA issue after field mapping fix for ticket {ticket_id}: {retry_error_msg}")
                     raise retry_e
             else:
                 # Not a field mapping error, re-raise
@@ -549,7 +549,7 @@ class TicketMigrator:
             return (ticket_id, success)
         except Exception as e:
             error_msg = f"Worker failed for ticket {ticket_id}: {str(e)}"
-            print(f"❌ {error_msg}")
+            self.logger.error(error_msg)
             
             # Update tracker with failure
             self.tracker.update_ticket_status(ticket_id, "failed", reason=error_msg)
@@ -577,12 +577,12 @@ class TicketMigrator:
         
         # Validate ticket_data structure
         if not isinstance(ticket_data, dict):
-            print(f"⚠️ Invalid ticket_data type for {issue_key}: {type(ticket_data)}")
+            self.logger.warning(f"Invalid ticket_data type for {issue_key}: {type(ticket_data)}")
             return {'total': 0, 'successful': 0, 'failed': 0}
         
         ticket_id = ticket_data.get('ticket_id')
         if ticket_id is None:
-            print(f"⚠️ Missing ticket_id in ticket_data for {issue_key}")
+            self.logger.warning(f"Missing ticket_id in ticket_data for {issue_key}")
             return {'total': 0, 'successful': 0, 'failed': 0}
         
         ticket_attachments = ticket_data.get('ticket_attachments', [])
@@ -590,7 +590,7 @@ class TicketMigrator:
         
         # Upload ticket attachments
         if ticket_attachments:
-            print(f"📎 Uploading {len(ticket_attachments)} ticket attachments...")
+            self.logger.info(f"Uploading {len(ticket_attachments)} ticket attachments...")
             attachment_data = []
             
             for attachment in ticket_attachments:
@@ -613,18 +613,18 @@ class TicketMigrator:
                 successful_attachments += successful
                 failed_attachments += failed
                 
-                print(f"📎 Uploaded {successful}/{len(attachment_data)} ticket attachments")
+                self.logger.info(f"Uploaded {successful}/{len(attachment_data)} ticket attachments")
                 
                 with self.stats_lock:
                     self.stats['total_attachments'] += len(attachment_data)
                     self.stats['successful_attachments'] += successful
                     self.stats['failed_attachments'] += failed
-            else:
-                print("⚠️ No valid ticket attachment files found")
+        else:
+            self.logger.warning("No valid ticket attachment files found")
         
         # Upload conversation attachments
         if conversation_attachments:
-            print(f"📎 Uploading {len(conversation_attachments)} conversation attachments...")
+            self.logger.info(f"Uploading {len(conversation_attachments)} conversation attachments...")
             attachment_data = []
             
             for attachment in conversation_attachments:
@@ -647,14 +647,14 @@ class TicketMigrator:
                 successful_attachments += successful
                 failed_attachments += failed
                 
-                print(f"📎 Uploaded {successful}/{len(attachment_data)} conversation attachments")
+                self.logger.info(f"Uploaded {successful}/{len(attachment_data)} conversation attachments")
                 
                 with self.stats_lock:
                     self.stats['total_attachments'] += len(attachment_data)
                     self.stats['successful_attachments'] += successful
                     self.stats['failed_attachments'] += failed
-            else:
-                print("⚠️ No valid conversation attachment files found")
+        else:
+            self.logger.warning("No valid conversation attachment files found")
         
         # Log attachment summary for this ticket
         if total_attachments > 0:
@@ -740,11 +740,11 @@ class TicketMigrator:
                     completed += 1
                     self.logger.progress(completed, total, ticket_id, "SUCCESS" if success else "FAILED")
         except KeyboardInterrupt:
-            print("\n⚠️ Migration interrupted by user. Cleaning up pending issues...")
+            self.logger.warning("Migration interrupted by user. Cleaning up pending issues...")
             self._cleanup_pending_issues()
             raise
         except Exception as e:
-            print(f"\n❌ Migration failed. Cleaning up pending issues...")
+            self.logger.error("Migration failed. Cleaning up pending issues...")
             self._cleanup_pending_issues()
             raise
         
@@ -896,7 +896,7 @@ def main():
             
             # Summary is already logged by the logger
         except KeyboardInterrupt:
-            print("\n⚠️ Migration interrupted by user. Cleaning up...")
+            migrator.logger.warning("Migration interrupted by user. Cleaning up...")
             migrator._cleanup_pending_issues()
             sys.exit(1)
         

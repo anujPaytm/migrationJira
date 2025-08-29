@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Delete JIRA tickets in batches with parallel processing.
-Supports deleting all tickets after a specific issue key (e.g., FTJM-64).
+Supports deleting all tickets after a specific issue key (e.g., FDMVHD-64).
 """
 
 import os
@@ -40,7 +40,7 @@ class JiraTicketDeleter:
         self.max_workers = max_workers
         self.logger = get_logger(log_file, "INFO")
         self.jira = self._get_jira_client()
-        self.project_key = os.getenv('JIRA_PROJECT_KEY', 'FTJM')
+        self.project_key = os.getenv('JIRA_PROJECT_KEY', 'FDMVHD')
         
     def _get_jira_client(self) -> JIRA:
         """Get authenticated JIRA client."""
@@ -61,7 +61,7 @@ class JiraTicketDeleter:
         Get all issue keys after a specific issue key.
         
         Args:
-            after_key: Issue key to start after (e.g., 'FTJM-64')
+            after_key: Issue key to start after (e.g., 'FDMVHD-64')
             batch_size: Number of issues to fetch per batch
             
         Returns:
@@ -291,7 +291,7 @@ def main():
     default_log_file = logs_dir / f"deletion_{timestamp}.log"
     
     parser = argparse.ArgumentParser(description='Delete JIRA tickets in batches')
-    parser.add_argument('--after-key', help='Delete all issues after this key (e.g., FTJM-64)')
+    parser.add_argument('--after-key', help='Delete all issues after this key (e.g., FDMVHD-64)')
     parser.add_argument('--all', action='store_true', help='Delete all issues in the project')
     parser.add_argument('--batch-size', type=int, default=100, help='Number of issues per batch (default: 100)')
     parser.add_argument('--workers', type=int, default=10, help='Number of parallel workers (default: 10)')

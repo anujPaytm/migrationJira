@@ -4,12 +4,12 @@
 # Automatically confirms deletion and runs until all tickets are removed
 
 echo "🚀 Starting continuous JIRA ticket deletion..."
-echo "🎯 This will delete ALL tickets after FTJM-64 in batches of 100"
+echo "🎯 This will delete ALL tickets after FDMVHD-64 in batches of 100"
 echo "🔧 Using 20 parallel workers per batch"
 echo ""
 
 # Configuration
-AFTER_KEY="FTJM-64"
+AFTER_KEY="FDMVHD-1"
 BATCH_SIZE=100
 WORKERS=20
 MAX_ITERATIONS=200  # Safety limit to prevent infinite loops
@@ -72,7 +72,7 @@ try:
         basic_auth=(os.getenv('JIRA_EMAIL'), os.getenv('JIRA_API_TOKEN'))
     )
     
-    jql = f'project = FTJM AND key > $AFTER_KEY'
+    jql = f'project = FDMVHD AND key > $AFTER_KEY'
     issues = jira.search_issues(jql, maxResults=1, fields='key')
     print(len(issues))
 except:

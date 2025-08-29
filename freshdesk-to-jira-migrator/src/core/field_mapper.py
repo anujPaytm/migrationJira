@@ -29,6 +29,7 @@ class FieldMapper:
         self.mapping_file_path = mapping_file_path
         self.field_mapping = self._load_field_mapping()
         self._overflow_tracker = 0  # Track which additional_info field to use next
+        self._additional_info_fields = self._load_additional_info_fields()
     
     def _load_field_mapping(self) -> Dict[str, Any]:
         """
@@ -46,6 +47,27 @@ class FieldMapper:
         except json.JSONDecodeError as e:
             print(f"Error: Invalid JSON in field mapping file: {e}")
             return {}
+    
+    def _load_additional_info_fields(self) -> List[str]:
+        """
+        Load additional_info fields from the field mapping configuration.
+        
+        Returns:
+            List of additional_info field IDs
+        """
+        try:
+            # Get additional_info fields from conversation_fields configuration
+            conversation_config = self.field_mapping.get("parent_fields", {}).get("conversation_fields", {})
+            additional_fields = conversation_config.get("additional_overflow_fields", [])
+            
+            if not additional_fields:
+                print("Warning: No additional_overflow_fields found in configuration")
+                return []
+            
+            return additional_fields
+        except Exception as e:
+            print(f"Error loading additional_info fields: {e}")
+            return []
     
     def get_field_mapping(self, field_name: str, field_category: str = "ticket_fields") -> Optional[Dict[str, Any]]:
         """
@@ -953,10 +975,125 @@ class FieldMapper:
         Returns:
             Next available additional_info field ID or None if all are used
         """
-        if self._overflow_tracker >= 10:
+        if self._overflow_tracker >= len(self._additional_info_fields):
             return None
         
-        # The correct field IDs are customfield_10357 through customfield_10366
-        field_id = f"customfield_{10357 + self._overflow_tracker}"
+        field_id = self._additional_info_fields[self._overflow_tracker]
         self._overflow_tracker += 1
         return field_id
+    
+    def handle_description_overflow(self, description: str, max_length: int = 32000) -> Dict[str, str]:
+        """
+        Handle description overflow using additional_info fields from configuration.
+        
+        Args:
+            description: The complete description text
+            max_length: Maximum length per field
+            
+        Returns:
+            Dictionary mapping field names to description chunks
+        """
+        overflow_mappings = {}
+        
+        if len(description) <= max_length:
+            overflow_mappings["description"] = description
+            return overflow_mappings
+        
+        # Split description into chunks
+        chunks = self._split_description_data(description, max_length, len(self._additional_info_fields))
+        
+        # Assign chunks to fields
+        overflow_mappings["description"] = chunks[0] if chunks else ""
+        
+        # Use additional_info fields from configuration
+        chunk_index = 1
+        for field_id in self._additional_info_fields:
+            if chunk_index < len(chunks):
+                overflow_mappings[field_id] = chunks[chunk_index]
+                chunk_index += 1
+            else:
+                break
+        
+        return overflow_mappings
+    
+    def _split_description_data(self, data: str, max_length: int, num_overflow_fields: int) -> List[str]:
+        """
+        Split description data into chunks for overflow fields.
+        
+        Args:
+            data: Description data string
+            max_length: Maximum length per field
+            num_overflow_fields: Number of overflow fields available
+            
+        Returns:
+            List of description chunks
+        """
+        if len(data) <= max_length:
+            return [data]
+        
+        chunks = []
+        remaining_data = data
+        total_fields = 1 + num_overflow_fields  # Original field + overflow fields
+        
+        for i in range(total_fields):
+            if not remaining_data:
+                break
+                
+            if i == 0:
+                # First chunk - include header
+                if len(remaining_data) <= max_length:
+                    chunks.append(remaining_data)
+                    break
+                else:
+                    # Find a good break point (end of a section)
+                    break_point = self._find_description_break_point(remaining_data, max_length)
+                    chunks.append(remaining_data[:break_point])
+                    remaining_data = remaining_data[break_point:]
+            else:
+                # Overflow chunks - add continuation header
+                continuation_header = f"**— Description (Continued {i}) —**\n"
+                available_length = max_length - len(continuation_header)
+                
+                if len(remaining_data) <= available_length:
+                    chunks.append(continuation_header + remaining_data)
+                    break
+                else:
+                    # Find a good break point
+                    break_point = self._find_description_break_point(remaining_data, available_length)
+                    chunks.append(continuation_header + remaining_data[:break_point])
+                    remaining_data = remaining_data[break_point:]
+        
+        return chunks
+    
+    def _find_description_break_point(self, data: str, max_length: int) -> int:
+        """
+        Find a good break point in description data that doesn't cut in the middle of a section.
+        
+        Args:
+            data: Description data string
+            max_length: Maximum length for this chunk
+            
+        Returns:
+            Index to break at
+        """
+        if len(data) <= max_length:
+            return len(data)
+        
+        # Look for section breaks first
+        section_breaks = ["\n\n**—", "\n**—", "\n\n##", "\n##", "\n\n###", "\n###"]
+        
+        for break_pattern in section_breaks:
+            last_break_pos = data.rfind(break_pattern, 0, max_length)
+            if last_break_pos > 0:
+                return last_break_pos
+        
+        # Look for paragraph breaks
+        paragraph_breaks = ["\n\n", "\n"]
+        
+        for break_pattern in paragraph_breaks:
+            last_break_pos = data.rfind(break_pattern, 0, max_length)
+            if last_break_pos > 0:
+                return last_break_pos + len(break_pattern)
+        
+        # If no good break point found, break at max_length
+        return max_length
