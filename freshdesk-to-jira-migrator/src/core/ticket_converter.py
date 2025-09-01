@@ -6,6 +6,8 @@ Handles field mapping, description formatting, and custom field assignment.
 import json
 from typing import Dict, Any, List, Optional
 from datetime import datetime
+import re
+from bs4 import BeautifulSoup
 from .field_mapper import FieldMapper
 from config.mapper_functions import truncate_text, clean_html
 
@@ -23,6 +25,178 @@ class TicketConverter:
             field_mapper: Field mapper instance
         """
         self.field_mapper = field_mapper
+    
+    def html_to_plain_text(self, html_content: str) -> str:
+        """
+        Convert HTML content to plain text while preserving formatting and structure.
+        This extracts the actual content from HTML tags, not the tags themselves.
+        
+        Args:
+            html_content: HTML content to convert
+            
+        Returns:
+            Plain text with preserved formatting and structure
+        """
+        if not html_content or not html_content.strip():
+            return ""
+        
+        # Parse HTML
+        soup = BeautifulSoup(html_content, 'html.parser')
+        
+        # Remove script and style elements
+        for script in soup(["script", "style"]):
+            script.decompose()
+        
+        # Handle line breaks
+        for br in soup.find_all(['br', 'br/']):
+            br.replace_with('\n')
+        
+        # Handle paragraphs
+        for p in soup.find_all('p'):
+            if p.get_text().strip():
+                p.replace_with(p.get_text().strip() + '\n\n')
+            else:
+                p.decompose()
+        
+        # Handle bold text - make it stand out (JIRA uses *text* for bold)
+        for tag in soup.find_all(['b', 'strong']):
+            text = tag.get_text().strip()
+            if text:
+                tag.replace_with(f' *{text}* ')
+            else:
+                tag.decompose()
+        
+        # Handle italic text (JIRA uses _text_ for italic)
+        for tag in soup.find_all(['i', 'em']):
+            text = tag.get_text().strip()
+            if text:
+                tag.replace_with(f' _{text}_ ')
+            else:
+                tag.decompose()
+        
+        # Handle links - show text and URL
+        for link in soup.find_all('a'):
+            href = link.get('href', '')
+            text = link.get_text()
+            if href and href.startswith('mailto:'):
+                # Keep email addresses as they are
+                link.replace_with(text)
+            elif href:
+                # Show text and URL
+                link.replace_with(f'{text} ({href})')
+            else:
+                link.replace_with(text)
+        
+        # Handle tables - convert to JIRA table format
+        for table in soup.find_all('table'):
+            table_text = '\n'
+            rows = table.find_all('tr')
+            for row in rows:
+                cells = row.find_all(['td', 'th'])
+                if cells:
+                    # Add header formatting with JIRA table syntax
+                    if row.find('th'):
+                        row_text = '||' + '||'.join([f'*{cell.get_text().strip()}*' for cell in cells]) + '||'
+                    else:
+                        row_text = '||' + '||'.join([cell.get_text().strip() for cell in cells]) + '||'
+                    table_text += row_text + '\n'
+            table_text += '\n'
+            table.replace_with(table_text)
+        
+        # Handle images - show descriptive text
+        for img in soup.find_all('img'):
+            src = img.get('src', '')
+            alt = img.get('alt', 'Image')
+            if src:
+                img.replace_with(f'[Image: {alt}] - URL: {src}')
+            else:
+                img.replace_with(f'[Image: {alt}]')
+        
+        # Handle lists
+        for ul in soup.find_all('ul'):
+            list_text = '\n'
+            for li in ul.find_all('li'):
+                list_text += f'• {li.get_text().strip()}\n'
+            list_text += '\n'
+            ul.replace_with(list_text)
+        
+        for ol in soup.find_all('ol'):
+            list_text = '\n'
+            for i, li in enumerate(ol.find_all('li'), 1):
+                list_text += f'{i}. {li.get_text().strip()}\n'
+            list_text += '\n'
+            ol.replace_with(list_text)
+        
+        # Handle headers
+        for i in range(1, 7):
+            for h in soup.find_all(f'h{i}'):
+                prefix = '#' * i + ' '
+                h.replace_with(f'{prefix}{h.get_text().strip()}\n\n')
+        
+        # Handle blockquotes (email quotes) - convert > to proper quote format
+        for blockquote in soup.find_all('blockquote'):
+            lines = blockquote.get_text().strip().split('\n')
+            quoted_text = '\n'.join([f'> {line}' for line in lines if line.strip()])
+            blockquote.replace_with(f'\n{quoted_text}\n\n')
+        
+        # Handle code blocks
+        for pre in soup.find_all('pre'):
+            code_text = pre.get_text().strip()
+            pre.replace_with(f'\n```\n{code_text}\n```\n\n')
+        
+        # Handle inline code
+        for code in soup.find_all('code'):
+            code_text = code.get_text().strip()
+            code.replace_with(f'`{code_text}`')
+        
+        # Also handle any remaining > symbols that might be from email quotes
+        # Replace standalone > symbols with proper quote format
+        text = soup.get_text()
+        
+        # Clean up extra whitespace and newlines
+        text = re.sub(r'\n\s*\n', '\n\n', text)  # Remove multiple empty lines
+        text = re.sub(r'[ \t]+', ' ', text)  # Normalize spaces
+        text = re.sub(r'\n{3,}', '\n\n', text)  # Limit consecutive newlines to 2
+        
+        # Handle email quote symbols that might interfere with JIRA formatting
+        # Simply remove problematic > symbols that break formatting
+        text = re.sub(r'^>\s*', '', text, flags=re.MULTILINE)  # Remove > at start of lines
+        text = re.sub(r'\n>\s*', '\n', text)  # Remove > after newlines
+        text = re.sub(r'\s*>\s*', ' ', text)  # Remove standalone > symbols with spaces
+        
+        # Fix email headers formatting - put each header on its own line
+        # Handle bold email headers first - use exact pattern matching
+        text = re.sub(r'(\s+)\*From:\*(\s+)', r'\n\n*From:* ', text)
+        text = re.sub(r'(\s+)\*To:\*(\s+)', r'\n\n*To:* ', text)
+        text = re.sub(r'(\s+)\*Cc:\*(\s+)', r'\n\n*Cc:* ', text)
+        text = re.sub(r'(\s+)\*Bcc:\*(\s+)', r'\n\n*Bcc:* ', text)
+        text = re.sub(r'(\s+)\*Subject:\*(\s+)', r'\n\n*Subject:* ', text)
+        text = re.sub(r'(\s+)\*Sent:\*(\s+)', r'\n\n*Sent:* ', text)
+        text = re.sub(r'(\s+)\*Date:\*(\s+)', r'\n\n*Date:* ', text)
+        
+        # Handle regular email headers
+        text = re.sub(r'(\s+)From:(\s+)', r'\n\nFrom: ', text)
+        text = re.sub(r'(\s+)To:(\s+)', r'\n\nTo: ', text)
+        text = re.sub(r'(\s+)Cc:(\s+)', r'\n\nCc: ', text)
+        text = re.sub(r'(\s+)Bcc:(\s+)', r'\n\nBcc: ', text)
+        text = re.sub(r'(\s+)Subject:(\s+)', r'\n\nSubject: ', text)
+        text = re.sub(r'(\s+)Sent:(\s+)', r'\n\nSent: ', text)
+        text = re.sub(r'(\s+)Date:(\s+)', r'\n\nDate: ', text)
+        
+        # Add single line separators between different email conversations
+        # Look for patterns that indicate new email threads
+        text = re.sub(r'\n\s*\*From:\*', '\n\n*From:*', text)
+        text = re.sub(r'\n\s*From:', '\n\nFrom:', text)
+        
+        # Clean up multiple consecutive separators
+        text = re.sub(r'--- NEW EMAIL ---\s*\n\s*--- NEW EMAIL ---', '--- NEW EMAIL ---', text)
+        
+        # Ensure proper spacing around email content
+        text = re.sub(r'\n{3,}', '\n\n', text)  # Limit consecutive newlines to 2
+        
+        text = text.strip()
+        
+        return text
     
     def convert_to_jira_issue(self, 
                              ticket: Dict[str, Any],
@@ -66,10 +240,12 @@ class TicketConverter:
         # Build description using hierarchical approach
         description_parts = []
         
-        # Add original description if available (use description_text if available, otherwise fall back to description)
-        description_text = ticket.get('description_text', ticket.get('description', ''))
-        if description_text:
-            description_parts.append(f"**— Description —**\n{description_text}")
+        # Add original description if available (convert HTML to readable plain text)
+        description_html = ticket.get('description', '')
+        if description_html:
+            # Convert HTML to plain text while preserving formatting
+            plain_text_description = self.html_to_plain_text(description_html)
+            description_parts.append(f"**— Description —**\n{plain_text_description}")
         
         # Add unmapped ticket fields to description (only if not mapped to custom fields)
         # Exclude HTML fields and description_text to avoid duplication

@@ -1067,7 +1067,7 @@ class FieldMapper:
     
     def _find_description_break_point(self, data: str, max_length: int) -> int:
         """
-        Find a good break point in description data that doesn't cut in the middle of a section.
+        Find a good break point in description data that doesn't cut in the middle of JIRA markup.
         
         Args:
             data: Description data string
@@ -1079,13 +1079,54 @@ class FieldMapper:
         if len(data) <= max_length:
             return len(data)
         
-        # Look for section breaks first
+        # Look for section breaks first (highest priority)
         section_breaks = ["\n\n**—", "\n**—", "\n\n##", "\n##", "\n\n###", "\n###"]
         
         for break_pattern in section_breaks:
             last_break_pos = data.rfind(break_pattern, 0, max_length)
             if last_break_pos > 0:
                 return last_break_pos
+        
+        # Look for JIRA table endings (don't break in middle of tables)
+        table_endings = ["||\n", "||\r\n"]
+        
+        for break_pattern in table_endings:
+            last_break_pos = data.rfind(break_pattern, 0, max_length)
+            if last_break_pos > 0:
+                return last_break_pos + len(break_pattern)
+        
+        # Look for complete JIRA markup patterns (don't break in middle of *bold* or _italic_)
+        # Find the last complete bold pattern before max_length
+        last_bold_end = -1
+        pos = 0
+        while True:
+            bold_start = data.find('*', pos)
+            if bold_start == -1 or bold_start >= max_length:
+                break
+            bold_end = data.find('*', bold_start + 1)
+            if bold_end == -1 or bold_end >= max_length:
+                break
+            last_bold_end = bold_end + 1
+            pos = bold_end + 1
+        
+        if last_bold_end > 0:
+            return last_bold_end
+        
+        # Look for complete italic patterns
+        last_italic_end = -1
+        pos = 0
+        while True:
+            italic_start = data.find('_', pos)
+            if italic_start == -1 or italic_start >= max_length:
+                break
+            italic_end = data.find('_', italic_start + 1)
+            if italic_end == -1 or italic_end >= max_length:
+                break
+            last_italic_end = italic_end + 1
+            pos = italic_end + 1
+        
+        if last_italic_end > 0:
+            return last_italic_end
         
         # Look for paragraph breaks
         paragraph_breaks = ["\n\n", "\n"]
