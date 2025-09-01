@@ -185,8 +185,8 @@ class TicketConverter:
         
         # Add single line separators between different email conversations
         # Look for patterns that indicate new email threads
-        text = re.sub(r'\n\s*\*From:\*', '\n\n*From:*', text)
-        text = re.sub(r'\n\s*From:', '\n\nFrom:', text)
+        text = re.sub(r'\n\s*\*From:\*', '\n\n---\n\n*From:*', text)
+        text = re.sub(r'\n\s*From:', '\n\n---\n\nFrom:', text)
         
         # Clean up multiple consecutive separators
         text = re.sub(r'--- NEW EMAIL ---\s*\n\s*--- NEW EMAIL ---', '--- NEW EMAIL ---', text)
