@@ -485,7 +485,9 @@ class FieldMapper:
             return ""
         
         headers = ["created_at", "updated_at", "conversation_id", "user_id", "private", "to_email", "from_email", "cc_email", "bcc_email"]
-        lines = ["**— Conversations —**", '|'.join(headers)]
+        # Create JIRA Wiki table header
+        lines = ["**— Conversations —**"]
+        lines.append("|| " + " || ".join(headers) + " ||")
         
         for conv in data:
             # Get user information from user_data
@@ -531,13 +533,17 @@ class FieldMapper:
             # Use body_text if available, otherwise fall back to body
             body_text = conv.get('body_text', conv.get('body', ''))
             
-            lines.extend([
-                '|'.join(values),
-                "",
-                body_text,
-                "---",
-                ""
-            ])
+            # Add table row
+            lines.append("| " + " | ".join(values) + " |")
+            
+            # Add body_text on next line for better readability
+            if body_text.strip():
+                lines.extend([
+                    "",  # Add blank line before body text
+                    body_text,
+                    "---",
+                    ""  # Add extra blank line for better readability
+                ])
         
         return '\n'.join(lines)
     
@@ -552,7 +558,9 @@ class FieldMapper:
             return ""
         
         headers = ["created_at", "updated_at", "attachment_id", "file name", "size", "user_id", "conversation_id"]
-        lines = ["**— Attachment Details —**", '|'.join(headers)]
+        # Create JIRA Wiki table header
+        lines = ["**— Attachment Details —**"]
+        lines.append("|| " + " || ".join(headers) + " ||")
         
         for attachment in data:
             # Get user information from user_data
@@ -587,7 +595,8 @@ class FieldMapper:
                 str(attachment.get('conversation_id', 'N/A'))
             ]
             
-            lines.append('|'.join(values))
+            # Add table row
+            lines.append("| " + " | ".join(values) + " |")
         
         return '\n'.join(lines)
     

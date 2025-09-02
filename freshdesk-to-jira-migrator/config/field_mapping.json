@@ -218,6 +218,7 @@
       "field_type": "custom",
       "mapper_function": "map_number_to_int"
     },
+
     "structured_description": {
       "jira_field": "customfield_10197",
       "jira_field_name": "FD_Structured_Description",

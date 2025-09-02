@@ -58,7 +58,7 @@ class TicketMigrator:
     Main migration orchestrator for converting Freshdesk tickets to JIRA.
     """
     
-    def __init__(self, config: JiraConfig, data_directory: str = "../data_to_be_migrated", max_workers: int = 8, log_file: str = None):
+    def __init__(self, config: JiraConfig, data_directory: str = "../data_to_be_migrated", max_workers: int = 8, log_file: str = None, raw_html: bool = False, markdown: bool = False):
         """
         Initialize the ticket migrator.
         
@@ -70,6 +70,8 @@ class TicketMigrator:
         """
         self.config = config
         self.max_workers = max_workers
+        self.raw_html = raw_html
+        self.markdown = markdown
         
         # Initialize logger with DEBUG level to capture all messages
         self.logger = get_logger(log_file, "DEBUG")
@@ -381,7 +383,9 @@ class TicketMigrator:
                 conversations=ticket_data['conversations'],
                 ticket_attachments=ticket_data['ticket_attachments'],
                 conversation_attachments=ticket_data['conversation_attachments'],
-                user_data=ticket_data['user_data']
+                user_data=ticket_data['user_data'],
+                use_raw_html=getattr(self, 'raw_html', False),
+                use_jira_wiki=getattr(self, 'markdown', False)
             )
             
             # Set project key and issue type
@@ -865,6 +869,8 @@ def main():
         parser.add_argument('--workers', type=int, default=8, help='Number of parallel workers (default: 8)')
         parser.add_argument('--sequential', action='store_true', help='Use sequential processing instead of parallel')
         parser.add_argument('--log-file', help='Path to log file (optional)')
+        parser.add_argument('--raw-html', action='store_true', help='Post raw HTML directly to JIRA (for HTML rendering)')
+        parser.add_argument('--markdown', action='store_true', help='Convert HTML to Markdown for best formatting')
         
         args = parser.parse_args()
         
@@ -874,6 +880,8 @@ def main():
         log_file = args.log_file if args.log_file else str(default_log_file)
         dry_run = args.dry_run
         sequential = args.sequential
+        raw_html = args.raw_html
+        markdown = args.markdown
         
         # Determine which tickets to migrate
         if args.ticket_ids:
@@ -894,6 +902,8 @@ def main():
         dry_run = os.getenv('DRY_RUN', 'false').lower() == 'true'
         sequential = os.getenv('SEQUENTIAL_MODE', 'false').lower() == 'true'
         migrate_all = os.getenv('MIGRATE_ALL', 'false').lower() == 'true'
+        raw_html = os.getenv('RAW_HTML', 'false').lower() == 'true'
+        markdown = os.getenv('MARKDOWN', 'false').lower() == 'true'
         limit = int(os.getenv('MIGRATION_LIMIT', '0'))
         
         # Parse ticket IDs from environment
@@ -911,7 +921,7 @@ def main():
         config = JiraConfig()
         
         # Initialize migrator with logger
-        migrator = TicketMigrator(config, data_dir, max_workers=max_workers, log_file=log_file if log_file else None)
+        migrator = TicketMigrator(config, data_dir, max_workers=max_workers, log_file=log_file if log_file else None, raw_html=raw_html, markdown=markdown)
         
         # Log the log file location
         if log_file:

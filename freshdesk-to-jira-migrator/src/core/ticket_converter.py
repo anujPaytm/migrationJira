@@ -26,7 +26,7 @@ class TicketConverter:
         """
         self.field_mapper = field_mapper
     
-    def html_to_plain_text(self, html_content: str) -> str:
+    def html_to_clean_text(self, html_content: str) -> str:
         """
         Convert HTML content to plain text while preserving formatting and structure.
         This extracts the actual content from HTML tags, not the tags themselves.
@@ -42,6 +42,9 @@ class TicketConverter:
         
         # Parse HTML
         soup = BeautifulSoup(html_content, 'html.parser')
+        
+        # Detect if this is a complex email template vs simple email chain
+        is_complex_template = self._is_complex_email_template(soup)
         
         # Remove script and style elements
         for script in soup(["script", "style"]):
@@ -88,20 +91,58 @@ class TicketConverter:
                 link.replace_with(text)
         
         # Handle tables - convert to JIRA table format
+        # Only process actual table tags, not div structures that look like tables
         for table in soup.find_all('table'):
-            table_text = '\n'
+            # Check if this is a real table with proper structure
             rows = table.find_all('tr')
+            if not rows:
+                continue
+                
+            # Verify this table has actual table cells
+            has_cells = False
             for row in rows:
                 cells = row.find_all(['td', 'th'])
                 if cells:
-                    # Add header formatting with JIRA table syntax
-                    if row.find('th'):
-                        row_text = '||' + '||'.join([f'*{cell.get_text().strip()}*' for cell in cells]) + '||'
-                    else:
-                        row_text = '||' + '||'.join([cell.get_text().strip() for cell in cells]) + '||'
-                    table_text += row_text + '\n'
-            table_text += '\n'
-            table.replace_with(table_text)
+                    has_cells = True
+                    break
+            
+            if not has_cells:
+                continue
+            
+            # For complex templates, be more conservative with table conversion
+            if is_complex_template:
+                # Only convert tables that have clear structure (not layout tables)
+                if len(rows) <= 10 and all(len(row.find_all(['td', 'th'])) <= 5 for row in rows):
+                    table_text = '\n'
+                    for row in rows:
+                        cells = row.find_all(['td', 'th'])
+                        if cells:
+                            # Add header formatting with JIRA table syntax
+                            if row.find('th'):
+                                row_text = '||' + '||'.join([f'*{cell.get_text().strip()}*' for cell in cells]) + '||'
+                            else:
+                                row_text = '||' + '||'.join([cell.get_text().strip() for cell in cells]) + '||'
+                            table_text += row_text + '\n'
+                    table_text += '\n'
+                    table.replace_with(table_text)
+                else:
+                    # For complex layout tables, just extract text without table formatting
+                    table_text = '\n' + table.get_text(separator='\n', strip=True) + '\n\n'
+                    table.replace_with(table_text)
+            else:
+                # For simple email chains, convert all tables normally
+                table_text = '\n'
+                for row in rows:
+                    cells = row.find_all(['td', 'th'])
+                    if cells:
+                        # Add header formatting with JIRA table syntax
+                        if row.find('th'):
+                            row_text = '||' + '||'.join([f'*{cell.get_text().strip()}*' for cell in cells]) + '||'
+                        else:
+                            row_text = '||' + '||'.join([cell.get_text().strip() for cell in cells]) + '||'
+                        table_text += row_text + '\n'
+                table_text += '\n'
+                table.replace_with(table_text)
         
         # Handle images - show descriptive text
         for img in soup.find_all('img'):
@@ -166,27 +207,31 @@ class TicketConverter:
         
         # Fix email headers formatting - put each header on its own line
         # Handle bold email headers first - use exact pattern matching
-        text = re.sub(r'(\s+)\*From:\*(\s+)', r'\n\n*From:* ', text)
-        text = re.sub(r'(\s+)\*To:\*(\s+)', r'\n\n*To:* ', text)
-        text = re.sub(r'(\s+)\*Cc:\*(\s+)', r'\n\n*Cc:* ', text)
-        text = re.sub(r'(\s+)\*Bcc:\*(\s+)', r'\n\n*Bcc:* ', text)
-        text = re.sub(r'(\s+)\*Subject:\*(\s+)', r'\n\n*Subject:* ', text)
-        text = re.sub(r'(\s+)\*Sent:\*(\s+)', r'\n\n*Sent:* ', text)
-        text = re.sub(r'(\s+)\*Date:\*(\s+)', r'\n\n*Date:* ', text)
-        
-        # Handle regular email headers
-        text = re.sub(r'(\s+)From:(\s+)', r'\n\nFrom: ', text)
-        text = re.sub(r'(\s+)To:(\s+)', r'\n\nTo: ', text)
-        text = re.sub(r'(\s+)Cc:(\s+)', r'\n\nCc: ', text)
-        text = re.sub(r'(\s+)Bcc:(\s+)', r'\n\nBcc: ', text)
-        text = re.sub(r'(\s+)Subject:(\s+)', r'\n\nSubject: ', text)
-        text = re.sub(r'(\s+)Sent:(\s+)', r'\n\nSent: ', text)
-        text = re.sub(r'(\s+)Date:(\s+)', r'\n\nDate: ', text)
+        # Only process if we're in an email context (not in complex HTML templates)
+        if not is_complex_template and ('From:' in text or 'To:' in text or 'Subject:' in text):
+            text = re.sub(r'(\s+)\*From:\*(\s+)', r'\n\n*From:* ', text)
+            text = re.sub(r'(\s+)\*To:\*(\s+)', r'\n\n*To:* ', text)
+            text = re.sub(r'(\s+)\*Cc:\*(\s+)', r'\n\n*Cc:* ', text)
+            text = re.sub(r'(\s+)\*Bcc:\*(\s+)', r'\n\n*Bcc:* ', text)
+            text = re.sub(r'(\s+)\*Subject:\*(\s+)', r'\n\n*Subject:* ', text)
+            text = re.sub(r'(\s+)\*Sent:\*(\s+)', r'\n\n*Sent:* ', text)
+            text = re.sub(r'(\s+)\*Date:\*(\s+)', r'\n\n*Date:* ', text)
+            
+            # Handle regular email headers
+            text = re.sub(r'(\s+)From:(\s+)', r'\n\nFrom: ', text)
+            text = re.sub(r'(\s+)To:(\s+)', r'\n\nTo: ', text)
+            text = re.sub(r'(\s+)Cc:(\s+)', r'\n\nCc: ', text)
+            text = re.sub(r'(\s+)Bcc:(\s+)', r'\n\nBcc: ', text)
+            text = re.sub(r'(\s+)Subject:(\s+)', r'\n\nSubject: ', text)
+            text = re.sub(r'(\s+)Sent:(\s+)', r'\n\nSent: ', text)
+            text = re.sub(r'(\s+)Date:(\s+)', r'\n\nDate: ', text)
         
         # Add single line separators between different email conversations
         # Look for patterns that indicate new email threads
-        text = re.sub(r'\n\s*\*From:\*', '\n\n---\n\n*From:*', text)
-        text = re.sub(r'\n\s*From:', '\n\n---\n\nFrom:', text)
+        # Only process if we're in an email context and not a complex template
+        if not is_complex_template and 'From:' in text:
+            text = re.sub(r'\n\s*\*From:\*', '\n\n---\n\n*From:*', text)
+            text = re.sub(r'\n\s*From:', '\n\n---\n\nFrom:', text)
         
         # Clean up multiple consecutive separators
         text = re.sub(r'--- NEW EMAIL ---\s*\n\s*--- NEW EMAIL ---', '--- NEW EMAIL ---', text)
@@ -198,12 +243,161 @@ class TicketConverter:
         
         return text
     
+    def _is_complex_email_template(self, soup) -> bool:
+        """
+        Detect if the HTML is a complex email template vs a simple email chain.
+        
+        Args:
+            soup: BeautifulSoup object
+            
+        Returns:
+            True if complex template, False if simple email chain
+        """
+        # Check for complex email template indicators
+        has_webkit = soup.find(class_='webkit') is not None
+        has_complex_tables = len(soup.find_all('table')) > 5  # More than 5 tables suggests template
+        has_nested_divs = len(soup.find_all('div')) > 100  # Many divs suggest complex layout
+        
+        # Check for email template specific classes
+        has_template_classes = any(
+            soup.find(class_=cls) for cls in ['outer', 'inner', 'contents', 'one-column']
+        )
+        
+        # Check for MSO (Microsoft Outlook) specific tags
+        has_mso_tags = len(soup.find_all(class_=lambda x: x and 'Mso' in x)) > 0
+        
+        # If it has multiple indicators of complexity, treat as template
+        complexity_score = sum([
+            has_webkit,
+            has_complex_tables,
+            has_nested_divs,
+            has_template_classes,
+            has_mso_tags
+        ])
+        
+        return complexity_score >= 2  # At least 2 complexity indicators
+    
+    def html_to_markdown(self, html_content: str) -> str:
+        """
+        Convert HTML content to JIRA Wiki markup for best formatting.
+        This method preserves the structure and formatting of the original HTML.
+        """
+        if not html_content:
+            return ""
+        
+        from bs4 import BeautifulSoup
+        
+        def clean_email_html(html: str) -> str:
+            """
+            Pre-process HTML to extract actual content from email wrapper tables
+            """
+            soup = BeautifulSoup(html, "html.parser")
+            
+            # Remove script and style tags
+            for tag in soup(["script", "style"]):
+                tag.decompose()
+            
+            # Remove invisible spacer elements
+            for tag in soup.find_all(["div", "span"]):
+                if tag.get("style") and "font-size:0px" in tag.get("style"):
+                    tag.decompose()
+            
+            # Look for the main content table and preserve it
+            main_content_table = soup.find("table", style=lambda x: x and "border:1px solid #d0d0d0" in x)
+            
+            if main_content_table:
+                # Create a new clean structure
+                new_soup = BeautifulSoup("<html><body></body></html>", "html.parser")
+                body = new_soup.body
+                
+                # Add the main content table
+                body.append(main_content_table)
+                
+                # Look for other content outside the main table
+                for tag in soup.find_all(["p", "div", "span"]):
+                    if tag.get("style") and "font-size:14px" in tag.get("style"):
+                        # This looks like actual content
+                        body.append(tag)
+                
+                return str(new_soup)
+            
+            return str(soup)
+        
+        def html_to_jira_wiki(html: str) -> str:
+            """
+            Convert HTML to JIRA Wiki markup with proper table handling
+            """
+            soup = BeautifulSoup(html, "html.parser")
+            
+            # Handle tables - convert to proper JIRA Wiki format
+            for table in soup.find_all("table"):
+                rows = []
+                for tr in table.find_all("tr"):
+                    cells = []
+                    for th in tr.find_all("th"):
+                        cells.append(th.get_text(strip=True))
+                    for td in tr.find_all("td"):
+                        cells.append(td.get_text(strip=True))
+                    
+                    # Build JIRA Wiki row
+                    if cells:
+                        if not rows:  # First row = header
+                            rows.append("|| " + " || ".join(cells) + " ||")
+                        else:
+                            rows.append("| " + " | ".join(cells) + " |")
+                
+                # Replace table with JIRA Wiki markup
+                table.replace_with("\n".join(rows))
+            
+            # Handle other formatting
+            for tag in soup.find_all(["b", "strong"]):
+                tag.string = f"*{tag.get_text(strip=True)}*"
+            
+            for tag in soup.find_all(["i", "em"]):
+                tag.string = f"_{tag.get_text(strip=True)}_"
+            
+            for tag in soup.find_all("a", href=True):
+                text = tag.get_text(strip=True)
+                href = tag["href"]
+                tag.string = f"[{text}|{href}]"
+            
+            # Convert line breaks
+            for br in soup.find_all("br"):
+                br.replace_with("\n")
+            
+            # Get clean text
+            text = soup.get_text("\n", strip=True)
+            
+            # Clean up excessive newlines
+            import re
+            text = re.sub(r"\n{3,}", "\n\n", text)
+            
+            # Add breaklines between different emails for better readability
+            # Look for email header patterns and add separators
+            if 'From:' in text or 'To:' in text or 'Subject:' in text:
+                # Add separators only before From: headers (indicating new emails)
+                # Skip the first From: header to avoid separator at the beginning
+                text = re.sub(r'\n\s*From:', '\n\n---\n\nFrom:', text)
+                text = re.sub(r'\n\s*\*From:\*', '\n\n---\n\n*From:*', text)
+                
+                # Clean up multiple consecutive separators
+                text = re.sub(r'---\s*\n\s*---', '---', text)
+                text = re.sub(r'\n{3,}', '\n\n', text)  # Limit consecutive newlines to 2
+            
+            return text
+        
+        # First clean the HTML, then convert to JIRA Wiki markup
+        cleaned_html = clean_email_html(html_content)
+        return html_to_jira_wiki(cleaned_html)
+    
     def convert_to_jira_issue(self, 
                              ticket: Dict[str, Any],
                              conversations: List[Dict[str, Any]] = None,
                              ticket_attachments: List[Dict[str, Any]] = None,
                              conversation_attachments: List[Dict[str, Any]] = None,
-                             user_data: Dict[str, Any] = None) -> Dict[str, Any]:
+                             user_data: Dict[str, Any] = None,
+                             use_raw_html: bool = False,
+                             use_jira_wiki: bool = False) -> Dict[str, Any]:
         """
         Convert a Freshdesk ticket to JIRA issue format.
         
@@ -240,12 +434,20 @@ class TicketConverter:
         # Build description using hierarchical approach
         description_parts = []
         
-        # Add original description if available (convert HTML to readable plain text)
+        # Add original description if available (convert HTML to clean plain text, markdown, or use raw HTML)
         description_html = ticket.get('description', '')
         if description_html:
-            # Convert HTML to plain text while preserving formatting
-            plain_text_description = self.html_to_plain_text(description_html)
-            description_parts.append(f"**— Description —**\n{plain_text_description}")
+            if use_jira_wiki:
+                # Convert HTML to Markdown for best formatting
+                markdown_description = self.html_to_markdown(description_html)
+                description_parts.append(f"**— Description —**\n{markdown_description}")
+            elif use_raw_html:
+                # Use raw HTML directly for JIRA rendering
+                description_parts.append(f"**— Description —**\n{description_html}")
+            else:
+                # Convert HTML to clean, readable plain text with proper formatting
+                plain_text_description = self.html_to_clean_text(description_html)
+                description_parts.append(f"**— Description —**\n{plain_text_description}")
         
         # Add unmapped ticket fields to description (only if not mapped to custom fields)
         # Exclude HTML fields and description_text to avoid duplication
@@ -266,21 +468,26 @@ class TicketConverter:
                 description_parts.append('\n'.join(metadata_lines))
         
         # Map conversations using hierarchical approach
+        conv_mapped_fields = {}
+        conv_unmapped_fields = {}
+        
         if conversations:
             conv_mapped_fields, conv_unmapped_fields = self.field_mapper.map_hierarchical_fields(conversations, "conversation_fields", user_data)
             
             # Add all mapped fields (overflow is handled by field mapper)
             for field_name, field_value in conv_mapped_fields.items():
                 jira_issue["fields"][field_name] = field_value
-            
-            # Add unmapped conversations to description (only if parent field is not mapped)
-            if conv_unmapped_fields and not conv_mapped_fields:
-                formatted_conversations = self._format_conversations_colon_separated(conversations, user_data)
-                if formatted_conversations:
-                    description_parts.append(formatted_conversations)
+        
+        # Add unmapped conversations to description (only if parent field is not mapped)
+        if conv_unmapped_fields and not conv_mapped_fields:
+            formatted_conversations = self._format_conversations_colon_separated(conversations, user_data)
+            if formatted_conversations:
+                description_parts.append(formatted_conversations)
         
         # Map attachments using hierarchical approach
         all_attachments = ticket_attachments + conversation_attachments if ticket_attachments and conversation_attachments else (ticket_attachments or conversation_attachments or [])
+        att_mapped_fields = {}
+        att_unmapped_fields = {}
         
         if all_attachments:
             att_mapped_fields, att_unmapped_fields = self.field_mapper.map_hierarchical_fields(all_attachments, "attachment_fields", user_data)
@@ -288,12 +495,12 @@ class TicketConverter:
             # Add all mapped fields (overflow is handled by field mapper)
             for field_name, field_value in att_mapped_fields.items():
                 jira_issue["fields"][field_name] = field_value
-            
-            # Add unmapped attachments to description (only if parent field is not mapped)
-            if att_unmapped_fields and not att_mapped_fields:
-                formatted_attachments = self._format_attachments_colon_separated(all_attachments, user_data)
-                if formatted_attachments:
-                    description_parts.append(formatted_attachments)
+        
+        # Add unmapped attachments to description (only if parent field is not mapped)
+        if att_unmapped_fields and not att_mapped_fields:
+            formatted_attachments = self._format_attachments_colon_separated(all_attachments, user_data)
+            if formatted_attachments:
+                description_parts.append(formatted_attachments)
         
         # Combine all description parts with overflow handling
         if description_parts:
@@ -489,7 +696,9 @@ class TicketConverter:
         # Define headers once - reordered with time fields first, then id
         headers = ["created_at", "updated_at", "conversation_id", "user_id", "private", "to_email", "from_email", "cc_email", "bcc_email"]
         
-        conversations_lines = ["**— Conversations —**", '|'.join(headers)]
+        # Create JIRA Wiki table header
+        conversations_lines = ["**— Conversations —**"]
+        conversations_lines.append("|| " + " || ".join(headers) + " ||")
         
         for conv in conversations:
             # Get user information from user_data
@@ -540,13 +749,17 @@ class TicketConverter:
             # Only use body_text, never body (HTML)
             body_text = conv.get('body_text', '')
             
-            conversations_lines.extend([
-                '|'.join(values),
-                "",  # Add blank line before body text
-                body_text,
-                "---",
-                ""  # Add extra blank line for better readability
-            ])
+            # Add table row
+            conversations_lines.append("| " + " | ".join(values) + " |")
+            
+            # Add body_text on next line for better readability
+            if body_text.strip():
+                conversations_lines.extend([
+                    "",  # Add blank line before body text
+                    body_text,
+                    "---",
+                    ""  # Add extra blank line for better readability
+                ])
         
         return '\n'.join(conversations_lines)
     
@@ -565,9 +778,11 @@ class TicketConverter:
             return ""
         
         # Define headers once - reordered with time fields first, then id
-        headers = ["created_at", "updated_at", "attachment_id", "newNamed file name", "size", "user_id", "conversation_id"]
+        headers = ["created_at", "updated_at", "attachment_id", "file name", "size", "user_id", "conversation_id"]
         
-        attachment_lines = ["**— Attachment Details —**", '|'.join(headers)]
+        # Create JIRA Wiki table header
+        attachment_lines = ["**— Attachment Details —**"]
+        attachment_lines.append("|| " + " || ".join(headers) + " ||")
         
         for attachment in attachments:
             # Get user information from user_data
@@ -604,6 +819,7 @@ class TicketConverter:
                 str(attachment.get('conversation_id', 'N/A'))
             ]
             
-            attachment_lines.append('|'.join(values))
+            # Add table row
+            attachment_lines.append("| " + " | ".join(values) + " |")
         
         return '\n'.join(attachment_lines)
