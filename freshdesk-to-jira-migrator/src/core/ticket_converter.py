@@ -109,6 +109,17 @@ class TicketConverter:
             if not has_cells:
                 continue
             
+            # Special handling for Google Calendar tables to prevent duplication
+            if self._is_google_calendar_table(table):
+                # For Google Calendar, extract only the essential meeting information
+                table_text = self._extract_google_calendar_table_content(table)
+                if table_text:
+                    table.replace_with(table_text)
+                else:
+                    # If no meaningful content, remove the table entirely
+                    table.decompose()
+                continue
+            
             # For complex templates, be more conservative with table conversion
             if is_complex_template:
                 # Only convert tables that have clear structure (not layout tables)
@@ -242,6 +253,440 @@ class TicketConverter:
         text = text.strip()
         
         return text
+    
+    def html_to_clean_text_improved(self, html_content: str) -> str:
+        """
+        Convert HTML content to clean, readable plain text using html2text.
+        Handles both complex and simple HTML files with outer table detection.
+        Outputs plain text that JIRA won't auto-format.
+        
+        Args:
+            html_content: HTML content to convert
+            
+        Returns:
+            Clean, readable plain text
+        """
+        if not html_content or not html_content.strip():
+            return ""
+        
+        # Log the input size for debugging
+        input_size = len(html_content)
+        print(f"🔄 Processing HTML content: {input_size} characters")
+        
+        try:
+            # Import html2text here to avoid dependency issues
+            import html2text
+            
+            # Step 1: Clean HTML and handle outer tables
+            print("📝 Step 1: Cleaning HTML and handling outer tables...")
+            cleaned_html = self._clean_html_for_conversion(html_content)
+            cleaned_size = len(cleaned_html)
+            print(f"📝 Cleaned HTML size: {cleaned_size} characters")
+            
+            # Step 2: Convert HTML to markdown using html2text
+            print("📝 Step 2: Converting HTML to markdown...")
+            h = html2text.HTML2Text()
+            h.ignore_links = False
+            h.ignore_images = False
+            h.ignore_emphasis = False
+            h.ignore_tables = False
+            h.body_width = 0  # No line wrapping
+            
+            markdown_text = h.handle(cleaned_html)
+            markdown_size = len(markdown_text)
+            print(f"📝 Markdown size: {markdown_size} characters")
+            
+            # Step 3: Convert markdown to clean, readable plain text
+            print("📝 Step 3: Converting markdown to clean text...")
+            clean_text = self._convert_markdown_to_clean_text(markdown_text)
+            final_size = len(clean_text)
+            print(f"📝 Final clean text size: {final_size} characters")
+            
+            # Check for significant data loss
+            if final_size < input_size * 0.5:  # If we lost more than 50% of content
+                print(f"⚠️ WARNING: Significant data loss detected!")
+                print(f"   Input: {input_size} chars")
+                print(f"   Output: {final_size} chars")
+                print(f"   Loss: {input_size - final_size} chars ({((input_size - final_size) / input_size * 100):.1f}%)")
+                
+                # Fallback to original method for safety
+                print("🔄 Falling back to original conversion method...")
+                fallback_text = self.html_to_clean_text(html_content)
+                fallback_size = len(fallback_text)
+                print(f"📝 Fallback method size: {fallback_size} characters")
+                
+                # Use whichever method preserved more content
+                if fallback_size > final_size:
+                    print("✅ Using fallback method (preserved more content)")
+                    return fallback_text
+                else:
+                    print("✅ Using improved method (despite data loss)")
+            
+            # Additional content loss detection
+            if self._detect_content_loss(html_content, clean_text):
+                print("🔄 Content loss detected, falling back to original method...")
+                fallback_text = self.html_to_clean_text(html_content)
+                print("✅ Using fallback method to preserve content")
+                return fallback_text
+            
+            # Final safety check - ensure we have meaningful content
+            if len(clean_text.strip()) < 100:  # If output is too short
+                print("⚠️ Output too short, falling back to original method...")
+                fallback_text = self.html_to_clean_text(html_content)
+                print("✅ Using fallback method for safety")
+                return fallback_text
+            
+            return clean_text
+            
+        except ImportError:
+            # Fallback to original method if html2text is not available
+            print("⚠️ html2text not available, falling back to original conversion method")
+            return self.html_to_clean_text(html_content)
+        except Exception as e:
+            print(f"⚠️ Error in improved conversion: {str(e)}")
+            print("🔄 Falling back to original conversion method...")
+            return self.html_to_clean_text(html_content)
+    
+    def _clean_html_for_conversion(self, html_content: str) -> str:
+        """
+        Pre-processes HTML to handle outer tables and clean up content.
+        Detects if there's an outer wrapper table and extracts the inner content.
+        """
+        soup = BeautifulSoup(html_content, 'html.parser')
+        
+        # Special handling for Google Calendar HTML
+        if self._is_google_calendar_html(soup):
+            return self._clean_google_calendar_html(soup)
+        
+        # Check if there's an outer wrapper table (common in email HTML)
+        outer_table = soup.find('table')
+        if outer_table:
+            # Look for inner content - check if outer table contains another table
+            inner_tables = outer_table.find_all('table')
+            if len(inner_tables) > 1:
+                # Multiple tables found - extract content from the most relevant one
+                # Usually the content table is the one with more complex structure
+                content_table = None
+                max_cells = 0
+                
+                for table in inner_tables:
+                    cells = len(table.find_all(['td', 'th']))
+                    if cells > max_cells:
+                        max_cells = cells
+                        content_table = table
+                
+                if content_table:
+                    # Extract content from the most relevant table
+                    return str(content_table)
+                else:
+                    # If no clear content table, extract all inner content
+                    inner_content = outer_table.find_all(['div', 'p', 'span', 'table'])
+                    if inner_content:
+                        return '\n'.join([str(item) for item in inner_content])
+                    else:
+                        # Fallback: get text content
+                        return outer_table.get_text(separator='\n', strip=True)
+            elif len(inner_tables) == 1:
+                # Single inner table - extract it
+                return str(inner_tables[0])
+            else:
+                # No inner tables, extract content from outer table
+                return outer_table.get_text(separator='\n', strip=True)
+        
+        # No outer table found, return original HTML
+        return html_content
+    
+    def _is_google_calendar_html(self, soup) -> bool:
+        """
+        Detects if the HTML is from Google Calendar based on specific markers.
+        """
+        # Check for Google Calendar specific elements
+        google_calendar_indicators = [
+            'Google Calendar',
+            'calendar.google.com',
+            'meet.google.com',
+            'Process of billing Discussion',  # Common in meeting invites
+            'Join with Google Meet',
+            'View map'
+        ]
+        
+        text_content = soup.get_text().lower()
+        return any(indicator.lower() in text_content for indicator in google_calendar_indicators)
+    
+    def _clean_google_calendar_html(self, soup) -> str:
+        """
+        Specialized cleaning for Google Calendar HTML to prevent table duplication.
+        Extracts meaningful content while preserving structure.
+        """
+        # Remove hidden elements and unnecessary styling
+        for element in soup.find_all(['span', 'div'], style=True):
+            if 'display:none' in element.get('style', '') or 'display: none' in element.get('style', ''):
+                element.decompose()
+        
+        # For Google Calendar, we want to extract the main meeting information
+        # without the complex table structure that causes duplication
+        
+        # Look for key meeting information elements
+        meeting_info = []
+        
+        # Extract meeting title/description
+        title_elements = soup.find_all(['h1', 'h2', 'h3', 'div'], class_=lambda x: x and 'primary-text' in x)
+        for element in title_elements:
+            text = element.get_text(strip=True)
+            if text and len(text) > 10:
+                meeting_info.append(text)
+        
+        # Extract meeting time
+        time_elements = soup.find_all(['time', 'span'], datetime=True)
+        for element in time_elements:
+            text = element.get_text(strip=True)
+            if text and len(text) > 5:
+                meeting_info.append(text)
+        
+        # Extract location
+        location_elements = soup.find_all(['div', 'span'], string=lambda x: x and 'Location' in x)
+        for element in location_elements:
+            # Get the next sibling or parent that contains the actual location
+            location_text = self._extract_location_text(element)
+            if location_text:
+                meeting_info.append(f"Location: {location_text}")
+        
+        # Extract meeting link
+        meet_links = soup.find_all('a', href=lambda x: x and 'meet.google.com' in x)
+        if meet_links:
+            meet_link = meet_links[0].get('href')
+            meeting_info.append(f"Meeting Link: {meet_link}")
+        
+        # Extract phone information
+        phone_elements = soup.find_all(['div', 'span'], string=lambda x: x and 'Join by phone' in x)
+        for element in phone_elements:
+            phone_text = self._extract_phone_text(element)
+            if phone_text:
+                meeting_info.append(f"Phone: {phone_text}")
+        
+        # Extract guests
+        guest_elements = soup.find_all(['div', 'span'], string=lambda x: x and 'Guests' in x)
+        for element in guest_elements:
+            guest_text = self._extract_guest_text(element)
+            if guest_text:
+                meeting_info.append(f"Guests: {guest_text}")
+        
+        # If we found structured meeting info, use it
+        if meeting_info:
+            return '\n\n'.join(meeting_info)
+        
+        # Fallback: extract text content more carefully
+        return self._extract_clean_text_content(soup)
+    
+    def _extract_location_text(self, location_element):
+        """Extract location text from location element."""
+        # Look for location text in nearby elements
+        parent = location_element.parent
+        if parent:
+            # Find the next element that contains address-like text
+            for sibling in parent.find_next_siblings():
+                text = sibling.get_text(strip=True)
+                if text and len(text) > 20 and ',' in text:
+                    return text
+        return None
+    
+    def _extract_phone_text(self, phone_element):
+        """Extract phone information from phone element."""
+        # Look for phone number in nearby elements
+        parent = phone_element.parent
+        if parent:
+            # Find phone number and PIN
+            phone_text = parent.get_text(strip=True)
+            if phone_text:
+                # Clean up the phone text
+                lines = phone_text.split('\n')
+                phone_info = []
+                for line in lines:
+                    line = line.strip()
+                    if line and ('+' in line or 'PIN:' in line):
+                        phone_info.append(line)
+                if phone_info:
+                    return ' '.join(phone_info)
+        return None
+    
+    def _extract_guest_text(self, guest_element):
+        """Extract guest information from guest element."""
+        # Look for guest emails in nearby elements
+        parent = guest_element.parent
+        if parent:
+            # Find guest emails
+            guest_emails = parent.find_all('a', href=lambda x: x and 'mailto:' in x)
+            if guest_emails:
+                emails = [email.get('href').replace('mailto:', '') for email in guest_emails]
+                return ', '.join(emails)
+        return None
+    
+    def _extract_clean_text_content(self, soup):
+        """Extract clean text content without table duplication."""
+        # Remove all table elements to prevent duplication
+        for table in soup.find_all('table'):
+            table.decompose()
+        
+        # Extract text from remaining elements
+        text_elements = []
+        for element in soup.find_all(['div', 'p', 'span']):
+            text = element.get_text(strip=True)
+            if text and len(text) > 5:
+                text_elements.append(text)
+        
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_text = []
+        for text in text_elements:
+            if text not in seen:
+                seen.add(text)
+                unique_text.append(text)
+        
+        return '\n\n'.join(unique_text)
+    
+    def _extract_table_text(self, table_element) -> str:
+        """
+        Extracts readable text from table elements without duplication.
+        """
+        rows = []
+        for row in table_element.find_all('tr'):
+            cells = []
+            for cell in row.find_all(['td', 'th']):
+                cell_text = cell.get_text(strip=True)
+                if cell_text:
+                    cells.append(cell_text)
+            if cells:
+                rows.append(' | '.join(cells))
+        
+        if rows:
+            return '\n'.join(rows)
+        return ''
+    
+    def _convert_markdown_to_clean_text(self, markdown_text: str) -> str:
+        """
+        Converts markdown text to clean, readable plain text.
+        Removes markdown syntax but preserves structure and readability.
+        """
+        import re
+        
+        # Split into lines for processing
+        lines = markdown_text.split('\n')
+        clean_lines = []
+        
+        i = 0
+        while i < len(lines):
+            line = lines[i].strip()
+            
+            # Handle headers - convert to plain text with clear separation
+            if line.startswith('#'):
+                level = len(line) - len(line.lstrip('#'))
+                text = line.lstrip('#').strip()
+                if level <= 3:  # Only process h1, h2, h3
+                    clean_lines.append('')  # Add space before header
+                    clean_lines.append(text.upper())  # Make headers stand out
+                    clean_lines.append('')  # Add space after header
+                else:
+                    clean_lines.append(text)
+            
+            # Handle tables - convert to readable format
+            elif line.startswith('|'):
+                # Check if this is a table header separator
+                if '---' in line:
+                    # Skip separator lines
+                    i += 1
+                    continue
+                
+                # Process table row
+                cells = [cell.strip() for cell in line.split('|') if cell.strip()]
+                if cells:
+                    # Format as readable text
+                    if i == 0 or (i > 0 and '---' in lines[i-1]):
+                        # This is a header row - make it stand out
+                        clean_lines.append('  '.join(cells))
+                        clean_lines.append('  '.join(['-' * len(cell) for cell in cells]))
+                    else:
+                        # This is a data row
+                        clean_lines.append('  '.join(cells))
+            
+            # Handle lists - convert to plain text with clear structure
+            elif line.startswith('* ') or line.startswith('- '):
+                clean_lines.append(f"• {line[2:].strip()}")
+            elif line.startswith('1. '):
+                clean_lines.append(f"1. {line[3:].strip()}")
+            
+            # Handle nested lists
+            elif line.startswith('  * ') or line.startswith('  - '):
+                clean_lines.append(f"  • {line[4:].strip()}")
+            elif line.startswith('    1. '):
+                clean_lines.append(f"  1. {line[6:].strip()}")
+            
+            # Handle bold and italic - remove markdown but preserve emphasis
+            elif '**' in line or '__' in line:
+                # Remove markdown but keep text
+                processed_line = line
+                processed_line = re.sub(r'\*\*(.*?)\*\*', r'\1', processed_line)
+                processed_line = re.sub(r'__(.*?)__', r'\1', processed_line)
+                clean_lines.append(processed_line)
+            
+            # Handle links - convert to readable format
+            elif '[' in line and '](' in line:
+                # Convert markdown links to readable format: [text](url) -> text (url)
+                processed_line = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'\1 (\2)', line)
+                clean_lines.append(processed_line)
+            
+            # Handle code blocks - convert to readable format
+            elif line.startswith('```'):
+                # Start/end of code block
+                if line == '```':
+                    clean_lines.append('')
+                    clean_lines.append('--- CODE BLOCK ---')
+                    clean_lines.append('')
+                else:
+                    # Code block with language specification
+                    lang = line[3:].strip()
+                    clean_lines.append('')
+                    clean_lines.append(f'--- {lang.upper()} CODE ---')
+                    clean_lines.append('')
+            
+            # Handle inline code - convert to readable format
+            elif '`' in line:
+                # Convert inline code: `code` -> [code]
+                processed_line = re.sub(r'`([^`]+)`', r'[\1]', line)
+                clean_lines.append(processed_line)
+            
+            # Handle horizontal rules
+            elif line.startswith('---') or line.startswith('***'):
+                clean_lines.append('')
+                clean_lines.append('─' * 50)  # Use Unicode line
+                clean_lines.append('')
+            
+            # Handle blockquotes - convert to readable format
+            elif line.startswith('> '):
+                clean_lines.append(f"Quote: {line[2:].strip()}")
+            
+            # Handle regular text
+            elif line:
+                clean_lines.append(line)
+            
+            # Handle empty lines
+            else:
+                clean_lines.append('')
+            
+            i += 1
+        
+        # Clean up multiple empty lines
+        result = []
+        prev_empty = False
+        for line in clean_lines:
+            if line == '':
+                if not prev_empty:
+                    result.append(line)
+                    prev_empty = True
+            else:
+                result.append(line)
+                prev_empty = False
+        
+        return '\n'.join(result)
     
     def _is_complex_email_template(self, soup) -> bool:
         """
@@ -446,7 +891,7 @@ class TicketConverter:
                 description_parts.append(f"**— Description —**\n{description_html}")
             else:
                 # Convert HTML to clean, readable plain text with proper formatting
-                plain_text_description = self.html_to_clean_text(description_html)
+                plain_text_description = self.html_to_clean_text_improved(description_html)
                 description_parts.append(f"**— Description —**\n{plain_text_description}")
         
         # Add unmapped ticket fields to description (only if not mapped to custom fields)
@@ -823,3 +1268,143 @@ class TicketConverter:
             attachment_lines.append("| " + " | ".join(values) + " |")
         
         return '\n'.join(attachment_lines)
+
+    def _detect_content_loss(self, original_html: str, converted_text: str) -> bool:
+        """
+        Detect if significant content was lost during conversion.
+        
+        Args:
+            original_html: Original HTML content
+            converted_text: Converted plain text
+            
+        Returns:
+            True if significant content loss detected, False otherwise
+        """
+        # Extract key information from both versions
+        original_soup = BeautifulSoup(original_html, 'html.parser')
+        converted_soup = BeautifulSoup(converted_text, 'html.parser')
+        
+        # Check for key content indicators
+        original_text = original_soup.get_text()
+        converted_text_clean = converted_text.strip()
+        
+        # Calculate content preservation ratio
+        if len(original_text) == 0:
+            return False  # No content to lose
+        
+        preservation_ratio = len(converted_text_clean) / len(original_text)
+        
+        # If we preserved less than 60% of content, consider it significant loss
+        if preservation_ratio < 0.6:
+            print(f"⚠️ Content loss detected: {preservation_ratio:.1%} preserved")
+            return True
+        
+        # Check for specific content patterns that might indicate loss
+        # Look for common email content patterns
+        email_patterns = [
+            'subject', 'from', 'to', 'cc', 'date', 'time', 'message', 'body',
+            'attachment', 'file', 'download', 'click', 'link', 'url'
+        ]
+        
+        original_has_patterns = any(pattern in original_text.lower() for pattern in email_patterns)
+        converted_has_patterns = any(pattern in converted_text_clean.lower() for pattern in email_patterns)
+        
+        if original_has_patterns and not converted_has_patterns:
+            print("⚠️ Email content patterns lost during conversion")
+            return True
+        
+        return False
+
+    def _is_google_calendar_table(self, table) -> bool:
+        """
+        Detects if a table is from Google Calendar based on content and structure.
+        """
+        table_text = table.get_text().lower()
+        google_calendar_indicators = [
+            'meet.google.com',
+            'join with google meet',
+            'meeting link',
+            'join by phone',
+            'calendar.google.com',
+            'view map',
+            'view all guest info'
+        ]
+        
+        # Check if table contains Google Calendar indicators
+        has_google_content = any(indicator in table_text for indicator in google_calendar_indicators)
+        
+        # Check if table has complex nested structure (typical of Google Calendar)
+        nested_tables = table.find_all('table')
+        has_nested_structure = len(nested_tables) > 0
+        
+        # Check if table has many cells with similar content (duplication indicator)
+        rows = table.find_all('tr')
+        if rows:
+            all_cells = []
+            for row in rows:
+                cells = row.find_all(['td', 'th'])
+                for cell in cells:
+                    cell_text = cell.get_text().strip()
+                    if cell_text:
+                        all_cells.append(cell_text)
+            
+            # If we have many cells with similar content, it's likely a Google Calendar table
+            if len(all_cells) > 10:
+                # Check for repeated patterns
+                unique_cells = set(all_cells)
+                if len(unique_cells) < len(all_cells) * 0.7:  # If more than 30% are duplicates
+                    return True
+        
+        return has_google_content and has_nested_structure
+    
+    def _extract_google_calendar_table_content(self, table) -> str:
+        """
+        Extracts meaningful content from Google Calendar tables without duplication.
+        """
+        # Extract key meeting information without the complex table structure
+        meeting_info = []
+        
+        # Look for meeting title/description
+        title_cells = table.find_all(['td', 'th'], string=lambda x: x and len(x.strip()) > 20)
+        for cell in title_cells:
+            text = cell.get_text().strip()
+            if text and not any(existing in text for existing in meeting_info):
+                meeting_info.append(text)
+        
+        # Look for meeting time
+        time_cells = table.find_all(['td', 'th'], string=lambda x: x and any(time_indicator in x.lower() for time_indicator in ['am', 'pm', ':', '2024']))
+        for cell in time_cells:
+            text = cell.get_text().strip()
+            if text and not any(existing in text for existing in meeting_info):
+                meeting_info.append(text)
+        
+        # Look for location
+        location_cells = table.find_all(['td', 'th'], string=lambda x: x and any(loc_indicator in x.lower() for loc_indicator in ['floor', 'plot', 'sector', 'gurugram', 'haryana']))
+        for cell in location_cells:
+            text = cell.get_text().strip()
+            if text and not any(existing in text for existing in meeting_info):
+                meeting_info.append(text)
+        
+        # Look for meeting links
+        link_cells = table.find_all(['td', 'th'])
+        for cell in link_cells:
+            links = cell.find_all('a', href=True)
+            for link in links:
+                href = link.get('href')
+                if 'meet.google.com' in href or 'calendar.google.com' in href:
+                    text = link.get_text().strip()
+                    if text and not any(existing in text for existing in meeting_info):
+                        meeting_info.append(f"{text}: {href}")
+        
+        # If we found meaningful content, return it
+        if meeting_info:
+            return '\n\n'.join(meeting_info)
+        
+        # Fallback: extract unique text content
+        all_text = []
+        for cell in table.find_all(['td', 'th']):
+            text = cell.get_text().strip()
+            if text and len(text) > 5 and text not in all_text:
+                all_text.append(text)
+        
+        return '\n'.join(all_text)
